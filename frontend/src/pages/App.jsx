@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { checkBackendHealth } from "./services/api";
+import { checkBackendHealth } from "../services/api";
 
 function App() {
   const [message, setMessage] = useState("");
