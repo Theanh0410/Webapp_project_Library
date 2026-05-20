@@ -1,0 +1,46 @@
+:root {
+  --iu-navy: #1a3d6b;
+  --iu-navy-dark: #142f52;
+  --iu-red: #d32f2f;
+  --iu-red-hover: #b71c1c;
+  --iu-white: #ffffff;
+  --iu-gray-bg: #f0f2f5;
+  --iu-gray-border: #dde1e6;
+  --iu-gray-text: #5a6570;
+  --iu-black: #1a1a1a;
+  --font-sans: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+  --shadow-card: 0 1px 3px rgba(26, 61, 107, 0.08);
+  --radius-pill: 999px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--iu-black);
+  background: var(--iu-white);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+}
