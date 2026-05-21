@@ -13,13 +13,15 @@ import {
   initialBooks,
   initialBorrows,
   initialOrders,
+  initialUsers,
 } from '../data/mockData'
 import type { Book, BookOrder, BorrowRecord, User } from '../types'
 
 interface LibraryContextValue {
   books: Book[]
-  borrows: BorrowRecord[]
+  borrowRecords: BorrowRecord[]
   orders: BookOrder[]
+  users: User[]
   borrowBook: (user: User, bookId: string) => string | null
   returnBook: (user: User, borrowId: string) => string | null
   orderBook: (user: User, bookId: string) => string | null
@@ -46,6 +48,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [books, setBooks] = useState(initialBooks)
   const [borrows, setBorrows] = useState(initialBorrows)
   const [orders, setOrders] = useState(initialOrders)
+  const [users] = useState(initialUsers)
 
   const getUserBorrows = useCallback(
     (userId: string) => borrows.filter((b) => b.userId === userId),
@@ -199,8 +202,9 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       books,
-      borrows,
+      borrowRecords: borrows,
       orders,
+      users,
       borrowBook,
       returnBook,
       orderBook,
@@ -213,6 +217,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       books,
       borrows,
       orders,
+      users,
       borrowBook,
       returnBook,
       orderBook,
