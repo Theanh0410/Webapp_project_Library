@@ -1,16 +1,41 @@
-# React + Vite
+# IU Library Management System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Web application for **International University (HCMIU)** library — borrow/return books, advance orders, and deadline reminders. UI styled to match the IU Office of Student Services portal (navy `#1a3d6b`, red `#d32f2f`).
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Login / Register** — Students and lecturers
+- **User dashboard** — Search catalog, borrow, return, order unavailable books
+- **Reminders** — Due dates, overdue penalties (5,000đ/day), ready orders
+- **Role limits** — Students: 3 books / 14 days; Lecturers: 8 books / 30 days
 
-## React Compiler
+## Demo accounts
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Role      | ID       | Password |
+|-----------|----------|----------|
+| Student   | IT12345  | 123456   |
+| Lecturer  | LEC8901  | 123456   |
 
-## Expanding the ESLint configuration
+## Run locally
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+cd iu-library
+npm install
+npm run dev
+```
+
+Open http://localhost:5173
+
+## Tech stack
+
+- React 19 + TypeScript
+- React Router 7
+- Vite 6
+- Local storage for session (demo; replace with backend API for production)
+
+## Next steps (backend)
+
+- Connect to Academic Affairs student import API
+- Staff: CRUD books, reports
+- Manager: staff management
+- Email/push notifications for reminders
