@@ -2,7 +2,6 @@ import { FormEvent, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Logo } from '../components/Logo'
 import { useAuth } from '../context/AuthContext'
-import { DEMO_PASSWORD } from '../data/mockData'
 import './Auth.css'
 
 export function Login() {
@@ -13,17 +12,22 @@ export function Login() {
   const [error, setError] = useState('')
   const [showRoleInfo, setShowRoleInfo] = useState(false)
 
-  if (user) return <Navigate to="/dashboard" replace />
+  if (user) {
+    return <Navigate to="/dashboard" replace />
+  }
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
-    const err = login(studentId, password)
-    if (err) {
-      setError(err)
+
+    const result = await login(studentId, password)
+
+    if (result.error) {
+      setError(result.error)
       return
     }
-    navigate('/dashboard')
+
+    navigate(result.redirectTo || '/dashboard')
   }
 
   return (
@@ -72,12 +76,12 @@ export function Login() {
         <div className="auth-demo">
           <strong>Tài khoản demo:</strong>
           <br />
-          Sinh viên: <code>IT12345</code> / <code>{DEMO_PASSWORD}</code>
+          Sinh viên: <code>student001</code> / <code>123456</code>
           <br />
-          Giảng viên: <code>LEC8901</code> / <code>{DEMO_PASSWORD}</code>
+          Giảng viên: <code>lecturer001</code> / <code>123456</code>
           <br />
-          <button 
-            type="button" 
+          <button
+            type="button"
             className="demo-toggle"
             onClick={() => setShowRoleInfo(!showRoleInfo)}
           >
@@ -86,9 +90,9 @@ export function Login() {
           {showRoleInfo && (
             <>
               <br />
-              Nhân viên: <code>STAFF001</code> / <code>{DEMO_PASSWORD}</code>
+              Nhân viên: <code>staff001</code> / <code>123456</code>
               <br />
-              Quản lý: <code>MGR001</code> / <code>{DEMO_PASSWORD}</code>
+              Quản lý: <code>staff020</code> / <code>123456</code>
             </>
           )}
         </div>

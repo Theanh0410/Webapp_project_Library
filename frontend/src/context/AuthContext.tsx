@@ -6,7 +6,6 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { initialUsers } from '../data/mockData'
 import type { User, UserRole } from '../types'
 
 interface RegisterInput {
@@ -17,74 +16,109 @@ interface RegisterInput {
   role: Extract<UserRole, 'student' | 'lecturer'>
 }
 
+interface AuthResult {
+  error: string | null
+  redirectTo?: string
+}
+
 interface AuthContextValue {
   user: User | null
   users: User[]
-  login: (studentId: string, password: string) => string | null
-  register: (input: RegisterInput) => string | null
+  login: (studentId: string, password: string) => Promise<AuthResult>
+  register: (input: RegisterInput) => Promise<AuthResult>
   logout: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-const STORAGE_KEY = 'iu-library-user'
+const API_URL = 'http://localhost:5000/api'
+const USER_STORAGE_KEY = 'iu-library-user'
+const TOKEN_STORAGE_KEY = 'iu-library-token'
 
-function loadStoredUser(users: User[]): User | null {
+function loadStoredUser(): User | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(USER_STORAGE_KEY)
     if (!raw) return null
-    const id = JSON.parse(raw) as string
-    return users.find((u) => u.id === id) ?? null
+    return JSON.parse(raw) as User
   } catch {
     return null
   }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [users, setUsers] = useState<User[]>(initialUsers)
-  const [user, setUser] = useState<User | null>(() => loadStoredUser(initialUsers))
+  const [users] = useState<User[]>([])
+  const [user, setUser] = useState<User | null>(() => loadStoredUser())
 
-  const login = useCallback(
-    (studentId: string, password: string) => {
-      const found = users.find(
-        (u) => u.studentId.toLowerCase() === studentId.trim().toLowerCase(),
-      )
-      if (!found) return 'Mã sinh viên / giảng viên không tồn tại.'
-      if (found.password !== password) return 'Mật khẩu không đúng.'
-      setUser(found)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(found.id))
-      return null
-    },
-    [users],
-  )
+  const login = useCallback(async (studentId: string, password: string) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username: studentId, password }),
+      })
 
-  const register = useCallback(
-    (input: RegisterInput) => {
-      const exists = users.some(
-        (u) =>
-          u.studentId.toLowerCase() === input.studentId.trim().toLowerCase() ||
-          u.email.toLowerCase() === input.email.trim().toLowerCase(),
-      )
-      if (exists) return 'Mã hoặc email đã được đăng ký.'
-      const newUser: User = {
-        id: `u${Date.now()}`,
-        studentId: input.studentId.trim(),
-        name: input.name.trim(),
-        email: input.email.trim().toLowerCase(),
-        role: input.role,
-        password: input.password,
+      const data = await res.json()
+
+      if (!res.ok) {
+        return {
+          error: data.message || 'Login failed.',
+        }
       }
-      setUsers((prev) => [...prev, newUser])
-      setUser(newUser)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser.id))
-      return null
-    },
-    [users],
-  )
+
+      setUser(data.user)
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user))
+      localStorage.setItem(TOKEN_STORAGE_KEY, data.token)
+
+      return {
+        error: null,
+        redirectTo: data.redirectTo,
+      }
+    } catch {
+      return {
+        error: 'Cannot connect to backend server.',
+      }
+    }
+  }, [])
+
+  const register = useCallback(async (input: RegisterInput) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(input),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        return {
+          error: data.message || 'Register failed.',
+        }
+      }
+
+      setUser(data.user)
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(data.user))
+      localStorage.setItem(TOKEN_STORAGE_KEY, data.token)
+
+      return {
+        error: null,
+        redirectTo: data.redirectTo,
+      }
+    } catch {
+      return {
+        error: 'Cannot connect to backend server.',
+      }
+    }
+  }, [])
 
   const logout = useCallback(() => {
     setUser(null)
-    localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(USER_STORAGE_KEY)
+    localStorage.removeItem(TOKEN_STORAGE_KEY)
   }, [])
 
   const value = useMemo(
