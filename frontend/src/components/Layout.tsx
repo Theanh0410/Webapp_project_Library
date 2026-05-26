@@ -3,11 +3,23 @@ import { useAuth } from '../context/AuthContext'
 import { Logo } from './Logo'
 import './Layout.css'
 
-const NAV_ITEMS = [
+const STUDENT_LECTURER_NAV = [
   { label: 'THƯ VIỆN', path: '/dashboard' },
   { label: 'MƯỢN / TRẢ', path: '/dashboard#borrow' },
   { label: 'ĐẶT TRƯỚC', path: '/dashboard#orders' },
   { label: 'LỊCH SỬ', path: '/dashboard#history' },
+]
+
+const STAFF_NAV = [
+  { label: 'QUẢN LÝ SÁCH', path: '/dashboard#books' },
+  { label: 'HỒ SƠ MƯỢN', path: '/dashboard#borrows' },
+  { label: 'XÁC NHẬN TRẢ', path: '/dashboard#returns' },
+  { label: 'SÁCH QUÁ HẠN', path: '/dashboard#overdue' },
+]
+
+const MANAGER_NAV = [
+  { label: 'QUẢN LÝ NHÂN VIÊN', path: '/dashboard#staff' },
+  { label: 'PHÂN CÔNG CA', path: '/dashboard#shifts' },
 ]
 
 export function Layout() {
@@ -18,6 +30,10 @@ export function Layout() {
     logout()
     navigate('/login')
   }
+
+  let navItems = STUDENT_LECTURER_NAV
+  if (user?.role === 'staff') navItems = STAFF_NAV
+  else if (user?.role === 'manager') navItems = MANAGER_NAV
 
   return (
     <div className="iu-app">
@@ -54,7 +70,7 @@ export function Layout() {
 
       <nav className="iu-nav">
         <div className="iu-nav__inner">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <Link key={item.path} to={item.path} className="iu-nav__link">
               {item.label}
             </Link>
@@ -73,3 +89,4 @@ export function Layout() {
     </div>
   )
 }
+

@@ -11,6 +11,7 @@ export function Login() {
   const [studentId, setStudentId] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [showRoleInfo, setShowRoleInfo] = useState(false)
 
   if (user) return <Navigate to="/dashboard" replace />
 
@@ -74,8 +75,25 @@ export function Login() {
           Sinh viên: <code>IT12345</code> / <code>{DEMO_PASSWORD}</code>
           <br />
           Giảng viên: <code>LEC8901</code> / <code>{DEMO_PASSWORD}</code>
+          <br />
+          <button 
+            type="button" 
+            className="demo-toggle"
+            onClick={() => setShowRoleInfo(!showRoleInfo)}
+          >
+            {showRoleInfo ? '▼' : '▶'} Tài khoản khác
+          </button>
+          {showRoleInfo && (
+            <>
+              <br />
+              Nhân viên: <code>STAFF001</code> / <code>{DEMO_PASSWORD}</code>
+              <br />
+              Quản lý: <code>MGR001</code> / <code>{DEMO_PASSWORD}</code>
+            </>
+          )}
         </div>
       </div>
     </div>
   )
 }
+

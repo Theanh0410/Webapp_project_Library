@@ -19,6 +19,22 @@ export const initialUsers: User[] = [
     role: 'lecturer',
     password: DEMO_PASSWORD,
   },
+  {
+    id: 'u3',
+    studentId: 'STAFF001',
+    name: 'Lê Thu Hương',
+    email: 'huong.le@hcmiu.edu.vn',
+    role: 'staff',
+    password: DEMO_PASSWORD,
+  },
+  {
+    id: 'u4',
+    studentId: 'MGR001',
+    name: 'Võ Chí Công',
+    email: 'cong.vo@hcmiu.edu.vn',
+    role: 'manager',
+    password: DEMO_PASSWORD,
+  },
 ]
 
 export const initialBooks: Book[] = [
@@ -54,3 +70,4 @@ export const MAX_BOOKS: Record<string, number> = {
 }
 
 export const PENALTY_PER_DAY = 5000
+
