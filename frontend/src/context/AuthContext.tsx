@@ -9,8 +9,8 @@ import {
 import type { User, UserRole } from '../types'
 
 interface RegisterInput {
-  studentId: string
-  name: string
+  username: string
+  full_name: string
   email: string
   password: string
   role: Extract<UserRole, 'student' | 'lecturer'>
@@ -24,7 +24,7 @@ interface AuthResult {
 interface AuthContextValue {
   user: User | null
   users: User[]
-  login: (studentId: string, password: string) => Promise<AuthResult>
+  login: (username: string, password: string) => Promise<AuthResult>
   register: (input: RegisterInput) => Promise<AuthResult>
   logout: () => void
 }
@@ -49,14 +49,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [users] = useState<User[]>([])
   const [user, setUser] = useState<User | null>(() => loadStoredUser())
 
-  const login = useCallback(async (studentId: string, password: string) => {
+  const login = useCallback(async (username: string, password: string) => {
     try {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username: studentId, password }),
+        body: JSON.stringify({ username, password }),
       })
 
       const data = await res.json()

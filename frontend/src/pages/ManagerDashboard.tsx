@@ -119,7 +119,7 @@ export function ManagerDashboard() {
   return (
     <>
       <section className="dashboard-hero">
-        <span className="user-badge">Quản lý · {user.name}</span>
+        <span className="user-badge">Quản lý · {user.full_name}</span>
         <h1>THƯ VIỆN - QUẢN LÝ NHÂN SỰ</h1>
         <p>Quản lý nhân viên và phân công ca làm việc</p>
       </section>

@@ -50,7 +50,7 @@ export function Layout() {
             <>
               <span className="iu-utility-bar__spacer" />
               <span className="iu-utility-bar__user">
-                {user.name} ({user.studentId})
+                {user.full_name} ({user.username})
               </span>
               <button type="button" className="iu-utility-bar__logout" onClick={handleLogout}>
                 Đăng xuất

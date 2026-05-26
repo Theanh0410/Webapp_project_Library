@@ -2,20 +2,20 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react'
-import {
-  BORROW_DAYS,
-  MAX_BOOKS,
-  PENALTY_PER_DAY,
-  initialBooks,
-  initialBorrows,
-  initialOrders,
-  initialUsers,
-} from '../data/mockData'
+
 import type { Book, BookOrder, BorrowRecord, User } from '../types'
+
+const STUDENT_BORROW_DAYS = 14
+const LECTURER_BORROW_DAYS = 28
+const STUDENT_MAX_BOOKS = 3
+const LECTURER_MAX_BOOKS = 5
+const PENALTY_PER_DAY = 5000
+const API_URL = 'http://localhost:5000/api'
 
 interface LibraryContextValue {
   books: Book[]
@@ -33,6 +33,16 @@ interface LibraryContextValue {
 
 const LibraryContext = createContext<LibraryContextValue | null>(null)
 
+function getBorrowDaysByRole(role: User['role']) {
+  if (role === 'lecturer') return LECTURER_BORROW_DAYS
+  return STUDENT_BORROW_DAYS
+}
+
+function getMaxBooksByRole(role: User['role']) {
+  if (role === 'lecturer') return LECTURER_MAX_BOOKS
+  return STUDENT_MAX_BOOKS
+}
+
 function addDays(iso: string, days: number): string {
   const d = new Date(iso)
   d.setDate(d.getDate() + days)
@@ -45,10 +55,29 @@ function daysBetween(a: string, b: string): number {
 }
 
 export function LibraryProvider({ children }: { children: ReactNode }) {
-  const [books, setBooks] = useState(initialBooks)
-  const [borrows, setBorrows] = useState(initialBorrows)
-  const [orders, setOrders] = useState(initialOrders)
-  const [users] = useState(initialUsers)
+  const [books, setBooks] = useState<Book[]>([])
+  const [borrows, setBorrows] = useState<BorrowRecord[]>([])
+  const [orders, setOrders] = useState<BookOrder[]>([])
+  const [users, setUsers] = useState<User[]>([])
+
+  useEffect(() => {
+    const loadBooks = async () => {
+      try {
+        const res = await fetch(`${API_URL}/books`)
+
+        if (!res.ok) {
+          throw new Error('Failed to load books')
+        }
+
+        const data = await res.json()
+        setBooks(data)
+      } catch (error) {
+        console.error('Load books error:', error)
+      }
+    }
+
+    loadBooks()
+  }, [])
 
   const getUserBorrows = useCallback(
     (userId: string) => borrows.filter((b) => b.userId === userId),
@@ -96,7 +125,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       const active = borrows.filter(
         (b) => b.userId === user.id && b.status === 'active',
       )
-      const max = MAX_BOOKS[user.role] ?? 3
+      const max = getMaxBooksByRole(user.role)
       if (active.length >= max) {
         return `Bạn đã mượn tối đa ${max} cuốn.`
       }
@@ -104,10 +133,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       if (!book) return 'Không tìm thấy sách.'
       if (!book.available) return 'Sách đang được mượn hoặc đã đặt trước.'
       const today = new Date().toISOString().slice(0, 10)
-      const days = BORROW_DAYS[user.role] ?? 14
+      const days = getBorrowDaysByRole(user.role)
+
       const record: BorrowRecord = {
         id: `br${Date.now()}`,
-        userId: user.id,
+        userId: String(user.id),
         bookId,
         borrowDate: today,
         dueDate: addDays(today, days),

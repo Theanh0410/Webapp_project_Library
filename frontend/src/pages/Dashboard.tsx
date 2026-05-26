@@ -6,13 +6,16 @@ import './Dashboard.css'
 
 const DISCIPLINES: (Discipline | 'All')[] = [
   'All',
-  'IT',
-  'Maths',
-  'Biology',
+  'Programming',
+  'Database',
+  'Networking',
+  'Artificial Intelligence',
+  'Business',
+  'Mathematics',
+  'English',
   'Physics',
-  'Economics',
-  'Literature',
-  'Other',
+  'Web Development',
+  'Cybersecurity',
 ]
 
 const ROLE_LABELS: Record<string, string> = {
@@ -84,7 +87,7 @@ export function Dashboard() {
     <>
       <section className="dashboard-hero">
         <span className="user-badge">
-          {ROLE_LABELS[user.role] ?? user.role} · {user.name}
+          {ROLE_LABELS[user.role] ?? user.role} · {user.full_name}
         </span>
         <h1>THƯ VIỆN THÔNG TIN</h1>
         <p>GIẢI ĐÁP &amp; MƯỢN SÁCH — Tìm sách theo mã, tên hoặc chuyên ngành</p>

@@ -11,7 +11,7 @@ export const register = async (req, res) => {
 
   try {
     const {
-      fullName,
+      full_name,
       username,
       email,
       password,
@@ -22,7 +22,7 @@ export const register = async (req, res) => {
       department,
     } = req.body;
 
-    if (!fullName || !username || !password || !role) {
+    if (!full_name || !username || !password || !role) {
       return res.status(400).json({
         message: "Please fill in all required fields.",
       });
@@ -59,7 +59,7 @@ export const register = async (req, res) => {
       `INSERT INTO users (full_name, username, password_hash, email, role)
        VALUES (?, ?, ?, ?, ?)`,
       [
-        fullName.trim(),
+        full_name.trim(),
         username.trim(),
         passwordHash,
         email?.trim().toLowerCase() || null,
@@ -94,10 +94,11 @@ export const register = async (req, res) => {
 
     const user = {
       id: userId,
-      fullName: fullName.trim(),
+      full_name: full_name.trim(),
       username: username.trim(),
       email: email?.trim().toLowerCase() || null,
       role,
+      position: null,
     };
 
     const token = jwt.sign(user, process.env.JWT_SECRET, {
@@ -175,7 +176,7 @@ export const login = async (req, res) => {
 
     const user = {
       id: foundUser.id,
-      fullName: foundUser.full_name,
+      full_name: foundUser.full_name,
       username: foundUser.username,
       email: foundUser.email,
       role: frontendRole,

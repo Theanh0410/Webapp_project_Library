@@ -2,21 +2,14 @@ export type UserRole = 'student' | 'lecturer' | 'staff' | 'manager'
 
 export interface User {
   id: string
-  studentId: string
-  name: string
+  username: string
+  full_name: string
   email: string
   role: UserRole
-  password: string
+  position?: string | null
 }
 
-export type Discipline =
-  | 'Maths'
-  | 'IT'
-  | 'Biology'
-  | 'Physics'
-  | 'Economics'
-  | 'Literature'
-  | 'Other'
+export type Discipline = string
 
 export interface Book {
   id: string

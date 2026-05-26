@@ -95,7 +95,7 @@ export function StaffDashboard() {
   }
 
   const getUserName = (userId: string) => {
-    return users.find((u) => u.id === userId)?.name ?? 'Unknown'
+    return users.find((u) => u.id === userId)?.full_name ?? 'Unknown'
   }
 
   const getBookTitle = (bookId: string) => {
@@ -105,7 +105,7 @@ export function StaffDashboard() {
   return (
     <>
       <section className="dashboard-hero">
-        <span className="user-badge">Nhân viên · {user.name}</span>
+        <span className="user-badge">Nhân viên · {user.full_name}</span>
         <h1>THƯ VIỆN - QUẢN LÝ NHÂN VIÊN</h1>
         <p>Quản lý sách, hồ sơ mượn, xác nhận trả sách và kiểm tra sách quá hạn</p>
       </section>
@@ -315,7 +315,7 @@ export function StaffDashboard() {
                     .filter((u) => u.role === 'student' || u.role === 'lecturer')
                     .map((u) => (
                       <option key={u.id} value={u.id}>
-                        {u.studentId} - {u.name}
+                        {u.username} - {u.full_name}
                       </option>
                     ))}
                 </select>
