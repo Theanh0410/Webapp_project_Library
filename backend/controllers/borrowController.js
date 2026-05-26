@@ -341,3 +341,64 @@ export const returnBorrowRecord = async (req, res) => {
     connection.release();
   }
 };
+
+export const getBorrowReminders = async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    let sql = `
+      SELECT
+        br.id AS borrow_id,
+        br.borrower_user_id,
+        br.due_date,
+        br.status,
+        bc.book_id,
+        b.title AS book_title,
+        DATEDIFF(br.due_date, CURDATE()) AS days_left
+      FROM borrow_records br
+      JOIN book_copies bc ON br.book_copy_id = bc.id
+      JOIN books b ON bc.book_id = b.id
+      WHERE br.status = 'borrowed'
+    `;
+
+    const params = [];
+
+    if (userId) {
+      sql += ` AND br.borrower_user_id = ?`;
+      params.push(userId);
+    }
+
+    sql += `
+      AND br.due_date <= DATE_ADD(CURDATE(), INTERVAL 3 DAY)
+      ORDER BY br.due_date ASC
+    `;
+
+    const [rows] = await db.query(sql, params);
+
+    const reminders = rows.map((row) => {
+      let status = "active";
+
+      if (row.days_left < 0) {
+        status = "overdue";
+      }
+
+      return {
+        borrowId: String(row.borrow_id),
+        userId: String(row.borrower_user_id),
+        bookId: String(row.book_id),
+        bookTitle: row.book_title,
+        dueDate: new Date(row.due_date).toISOString().slice(0, 10),
+        status,
+        daysLeft: Number(row.days_left),
+      };
+    });
+
+    return res.json(reminders);
+  } catch (error) {
+    console.error("Get borrow reminders error:", error);
+
+    return res.status(500).json({
+      message: "Server error while loading borrow reminders.",
+    });
+  }
+};

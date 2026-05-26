@@ -1,22 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLibrary } from '../context/LibraryContext'
-import type { Discipline } from '../types'
 import './Dashboard.css'
 
-const DISCIPLINES: (Discipline | 'All')[] = [
-  'All',
-  'Programming',
-  'Database',
-  'Networking',
-  'Artificial Intelligence',
-  'Business',
-  'Mathematics',
-  'English',
-  'Physics',
-  'Web Development',
-  'Cybersecurity',
-]
+const API_URL = 'http://localhost:5000/api'
 
 const ROLE_LABELS: Record<string, string> = {
   student: 'Sinh viên',
@@ -37,48 +24,78 @@ export function Dashboard() {
   } = useLibrary()
 
   const [search, setSearch] = useState('')
-  const [discipline, setDiscipline] = useState<Discipline | 'All'>('All')
+  const [category, setCategory] = useState<string | 'All'>('All')
+  const [categories, setCategories] = useState<string[]>(['All'])
   const [toast, setToast] = useState<{ msg: string; type: 'info' | 'warn' } | null>(null)
-
-  if (!user) return null
 
   const showToast = (msg: string, type: 'info' | 'warn' = 'info') => {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 4000)
   }
 
-  const reminders = getReminders(user.id)
-  const myBorrows = getUserBorrows(user.id).filter((b) => b.status === 'active')
-  const myHistory = getUserBorrows(user.id).filter((b) => b.status !== 'active')
-  const myOrders = getUserOrders(user.id).filter((o) => o.status !== 'cancelled')
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const res = await fetch(`${API_URL}/books/categories`)
+
+        if (!res.ok) {
+          throw new Error('Failed to load categories')
+        }
+
+        const data: { id: string; name: string }[] = await res.json()
+        setCategories(['All', ...data.map((c) => c.name)])
+      } catch (error) {
+        console.error('Load categories error:', error)
+      }
+    }
+
+    loadCategories()
+  }, [])
+
+  const reminders = user ? getReminders(user.id) : []
+  const myBorrows = user
+    ? getUserBorrows(user.id).filter((b) => b.status === 'active')
+    : []
+  const myHistory = user
+    ? getUserBorrows(user.id).filter((b) => b.status !== 'active')
+    : []
+  const myOrders = user
+    ? getUserOrders(user.id).filter((o) => o.status !== 'cancelled')
+    : []
 
   const filteredBooks = useMemo(() => {
     const q = search.trim().toLowerCase()
+
     return books.filter((b) => {
-      const matchDisc = discipline === 'All' || b.discipline === discipline
+      const matchCategory = category === 'All' || b.category === category
       const matchSearch =
         !q ||
         b.title.toLowerCase().includes(q) ||
         b.code.toLowerCase().includes(q) ||
-        b.author.toLowerCase().includes(q)
-      return matchDisc && matchSearch
-    })
-  }, [books, search, discipline])
+        b.author.toLowerCase().includes(q) ||
+        b.category.toLowerCase().includes(q) ||
+        b.subject.toLowerCase().includes(q)
 
-  const handleBorrow = (bookId: string) => {
-    const err = borrowBook(user, bookId)
+      return matchCategory && matchSearch
+    })
+  }, [books, search, category])
+
+  if (!user) return null
+
+  const handleBorrow = async (bookId: string) => {
+    const err = await borrowBook(user, bookId)
     if (err) showToast(err, 'warn')
     else showToast('Mượn sách thành công! Vui lòng trả đúng hạn.')
   }
 
-  const handleReturn = (borrowId: string) => {
-    const msg = returnBook(user, borrowId)
+  const handleReturn = async (borrowId: string) => {
+    const msg = await returnBook(user, borrowId)
     if (msg) showToast(msg, msg.includes('Phạt') ? 'warn' : 'info')
     else showToast('Đã trả sách. Cảm ơn bạn!')
   }
 
-  const handleOrder = (bookId: string) => {
-    const err = orderBook(user, bookId)
+  const handleOrder = async (bookId: string) => {
+    const err = await orderBook(user, bookId)
     if (err) showToast(err, 'warn')
     else showToast('Đã đặt trước. Bạn sẽ nhận thông báo khi sách sẵn sàng.')
   }
@@ -90,7 +107,7 @@ export function Dashboard() {
           {ROLE_LABELS[user.role] ?? user.role} · {user.full_name}
         </span>
         <h1>THƯ VIỆN THÔNG TIN</h1>
-        <p>GIẢI ĐÁP &amp; MƯỢN SÁCH — Tìm sách theo mã, tên hoặc chuyên ngành</p>
+        <p>GIẢI ĐÁP &amp; MƯỢN SÁCH — Tìm sách theo mã, tên, chuyên ngành hoặc chủ đề</p>
         <div className="search-bar">
           <input
             type="search"
@@ -162,7 +179,10 @@ export function Dashboard() {
                     <button
                       type="button"
                       className="btn btn--secondary"
-                      onClick={() => cancelOrder(ord.id)}
+                      onClick={async () => {
+                        await cancelOrder(ord.id)
+                        showToast('Đã hủy đặt trước.', 'info')
+                      }}
                     >
                       Hủy
                     </button>
@@ -177,14 +197,14 @@ export function Dashboard() {
       <section>
         <h2 className="section-title">Danh mục sách</h2>
         <div className="discipline-filters">
-          {DISCIPLINES.map((d) => (
+          {categories.map((c) => (
             <button
-              key={d}
+              key={c}
               type="button"
-              className={`filter-chip ${discipline === d ? 'filter-chip--active' : ''}`}
-              onClick={() => setDiscipline(d)}
+              className={`filter-chip ${category === c ? 'filter-chip--active' : ''}`}
+              onClick={() => setCategory(c)}
             >
-              {d === 'All' ? 'Tất cả' : d}
+              {c === 'All' ? 'Tất cả' : c}
             </button>
           ))}
         </div>
@@ -194,7 +214,7 @@ export function Dashboard() {
               <span className="book-card__code">{book.code}</span>
               <h3 className="book-card__title">{book.title}</h3>
               <p className="book-card__meta">
-                {book.author} · {book.discipline} · Kệ {book.shelf}
+                {book.author} · {book.category} · {book.subject} · Kệ {book.shelf}
               </p>
               <span
                 className={`book-card__badge ${book.available ? 'book-card__badge--ok' : 'book-card__badge--busy'}`}

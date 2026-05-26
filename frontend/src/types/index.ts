@@ -9,16 +9,19 @@ export interface User {
   position?: string | null
 }
 
-export type Discipline = string
-
 export interface Book {
   id: string
   code: string
   title: string
   author: string
-  discipline: Discipline
+  category: string
+  subject: string
   available: boolean
   shelf: string
+
+  publishedYear?: number | null
+  description?: string
+  copies?: number
 }
 
 export type BorrowStatus = 'active' | 'returned' | 'overdue'

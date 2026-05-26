@@ -3,6 +3,7 @@ import {
   getBorrowRecords,
   createBorrowRecord,
   returnBorrowRecord,
+  getBorrowReminders,
 } from "../controllers/borrowController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -10,6 +11,7 @@ const router = express.Router();
 
 router.get("/", protect, getBorrowRecords);
 router.post("/", protect, createBorrowRecord);
+router.get("/reminders", protect, getBorrowReminders);
 router.put("/:id/return", protect, returnBorrowRecord);
 
 export default router;

@@ -1,13 +1,26 @@
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLibrary } from '../context/LibraryContext'
 import './Dashboard.css'
 
+const API_URL = 'http://localhost:5000/api'
+const TOKEN_STORAGE_KEY = 'iu-library-token'
+
+function getAuthHeaders() {
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY)
+
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  }
+}
+
 interface StaffMember {
   id: string
   name: string
+  full_name?: string
   email: string
-  studentId: string
+  username: string
   shifts: string[]
   status: 'active' | 'inactive'
 }
@@ -19,27 +32,40 @@ export function ManagerDashboard() {
   const [activeTab, setActiveTab] = useState<'staff' | 'shifts'>('staff')
   const [toast, setToast] = useState<{ msg: string; type: 'info' | 'warn' } | null>(null)
   const [showAddStaff, setShowAddStaff] = useState(false)
-  const [staffList, setStaffList] = useState<StaffMember[]>([
-    {
-      id: 'u3',
-      name: 'Lê Thu Hương',
-      email: 'huong.le@hcmiu.edu.vn',
-      studentId: 'STAFF001',
-      shifts: ['Morning (8AM-12PM)', 'Afternoon (1PM-5PM)'],
-      status: 'active',
-    },
-  ])
+  const [staffList, setStaffList] = useState<StaffMember[]>([])
+
+  const loadStaff = async () => {
+    try {
+      const res = await fetch(`${API_URL}/staff`, {
+        headers: getAuthHeaders(),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        showToast(data.message || 'Không thể tải danh sách nhân viên', 'warn')
+        return
+      }
+
+      setStaffList(data)
+    } catch (error) {
+      console.error('Load staff error:', error)
+      showToast('Không thể kết nối server', 'warn')
+    }
+  }
+
+  useEffect(() => {
+    loadStaff()
+  }, [])
 
   const [newStaff, setNewStaff] = useState({
     name: '',
     email: '',
-    studentId: '',
+    username: '',
   })
 
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null)
   const [selectedShifts, setSelectedShifts] = useState<string[]>([])
-
-  if (!user) return null
 
   const showToast = (msg: string, type: 'info' | 'warn' = 'info') => {
     setToast({ msg, type })
@@ -47,64 +73,144 @@ export function ManagerDashboard() {
   }
 
   const AVAILABLE_SHIFTS = [
-    'Morning (8AM-12PM)',
-    'Afternoon (1PM-5PM)',
-    'Evening (5PM-8PM)',
+    'Monday Morning',
+    'Monday Afternoon',
+    'Tuesday Morning',
+    'Tuesday Afternoon',
+    'Wednesday Morning',
+    'Wednesday Afternoon',
+    'Thursday Morning',
+    'Thursday Afternoon',
+    'Friday Morning',
+    'Friday Afternoon',
   ]
 
-  const handleAddStaff = (e: FormEvent) => {
+  const handleAddStaff = async (e: FormEvent) => {
     e.preventDefault()
-    if (!newStaff.name || !newStaff.email || !newStaff.studentId) {
+
+    if (!newStaff.name || !newStaff.email || !newStaff.username) {
       showToast('Vui lòng điền đầy đủ thông tin', 'warn')
       return
     }
 
-    const staff: StaffMember = {
-      id: `staff_${Date.now()}`,
-      ...newStaff,
-      shifts: [],
-      status: 'active',
+    try {
+      const res = await fetch(`${API_URL}/staff`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: newStaff.name,
+          email: newStaff.email,
+          username: newStaff.username,
+          position: 'Library Staff',
+          password: '123456',
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        showToast(data.message || 'Không thể thêm nhân viên', 'warn')
+        return
+      }
+
+      await loadStaff()
+
+      showToast('Nhân viên mới đã được thêm thành công', 'info')
+      setNewStaff({ name: '', email: '', username: '' })
+      setShowAddStaff(false)
+    } catch (error) {
+      console.error('Add staff error:', error)
+      showToast('Không thể kết nối server', 'warn')
+    }
+  }
+
+  const handleRemoveStaff = async (staffId: string) => {
+    try {
+      const res = await fetch(`${API_URL}/staff/${staffId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        showToast(data.message || 'Không thể xóa nhân viên', 'warn')
+        return
+      }
+
+      await loadStaff()
+      showToast('Nhân viên đã bị xóa', 'info')
+    } catch (error) {
+      console.error('Remove staff error:', error)
+      showToast('Không thể kết nối server', 'warn')
+    }
+  }
+
+  const handleToggleStaffStatus = async (staffId: string) => {
+    const staff = staffList.find((s) => s.id === staffId)
+
+    if (!staff) {
+      showToast('Không tìm thấy nhân viên', 'warn')
+      return
     }
 
-    setStaffList((prev) => [...prev, staff])
-    showToast('Nhân viên mới đã được thêm thành công', 'info')
-    setNewStaff({ name: '', email: '', studentId: '' })
-    setShowAddStaff(false)
+    try {
+      const res = await fetch(`${API_URL}/staff/${staffId}/status`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          is_active: staff.status !== 'active',
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        showToast(data.message || 'Không thể cập nhật trạng thái', 'warn')
+        return
+      }
+
+      await loadStaff()
+      showToast('Cập nhật trạng thái nhân viên thành công', 'info')
+    } catch (error) {
+      console.error('Toggle staff status error:', error)
+      showToast('Không thể kết nối server', 'warn')
+    }
   }
 
-  const handleRemoveStaff = (staffId: string) => {
-    setStaffList((prev) => prev.filter((s) => s.id !== staffId))
-    showToast('Nhân viên đã bị xóa', 'info')
-  }
-
-  const handleToggleStaffStatus = (staffId: string) => {
-    setStaffList((prev) =>
-      prev.map((s) =>
-        s.id === staffId
-          ? { ...s, status: s.status === 'active' ? 'inactive' : 'active' }
-          : s,
-      ),
-    )
-    showToast('Cập nhật trạng thái nhân viên thành công', 'info')
-  }
-
-  const handleAssignShifts = (e: FormEvent) => {
+  const handleAssignShifts = async (e: FormEvent) => {
     e.preventDefault()
+
     if (!selectedStaffId) {
       showToast('Vui lòng chọn nhân viên', 'warn')
       return
     }
 
-    setStaffList((prev) =>
-      prev.map((s) =>
-        s.id === selectedStaffId
-          ? { ...s, shifts: selectedShifts }
-          : s,
-      ),
-    )
-    showToast('Lịch ca làm việc đã được cập nhật', 'info')
-    setSelectedStaffId(null)
-    setSelectedShifts([])
+    try {
+      const res = await fetch(`${API_URL}/staff/${selectedStaffId}/shifts`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          shifts: selectedShifts,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        showToast(data.message || 'Không thể cập nhật ca làm việc', 'warn')
+        return
+      }
+
+      await loadStaff()
+
+      showToast('Lịch ca làm việc đã được cập nhật', 'info')
+      setSelectedStaffId(null)
+      setSelectedShifts([])
+    } catch (error) {
+      console.error('Assign shifts error:', error)
+      showToast('Không thể kết nối server', 'warn')
+    }
   }
 
   const handleShiftToggle = (shift: string) => {
@@ -115,6 +221,8 @@ export function ManagerDashboard() {
 
   const activeStaffCount = staffList.filter((s) => s.status === 'active').length
   const staffWithShifts = staffList.filter((s) => s.shifts.length > 0).length
+
+  if (!user) return null
 
   return (
     <>
@@ -196,8 +304,8 @@ export function ManagerDashboard() {
                 <label>
                   Mã nhân viên
                   <input
-                    value={newStaff.studentId}
-                    onChange={(e) => setNewStaff({ ...newStaff, studentId: e.target.value })}
+                    value={newStaff.username}
+                    onChange={(e) => setNewStaff({ ...newStaff, username: e.target.value })}
                     placeholder="VD: STAFF002"
                     required
                   />
@@ -225,7 +333,7 @@ export function ManagerDashboard() {
                 <tbody>
                   {staffList.map((staff) => (
                     <tr key={staff.id}>
-                      <td>{staff.studentId}</td>
+                      <td>{staff.username}</td>
                       <td>{staff.name}</td>
                       <td>{staff.email}</td>
                       <td>

@@ -6,7 +6,8 @@ function mapBook(row) {
     code: row.isbn || `BOOK-${row.id}`,
     title: row.title,
     author: row.author || "Unknown",
-    discipline: row.category_name || "Other",
+    category: row.category_name || "Other",
+    subject: row.subject_name || "General",
     available: Number(row.available_copies) > 0,
     shelf: row.shelf || "General",
   };
@@ -22,12 +23,21 @@ export const getBooks = async (req, res) => {
         b.isbn,
         b.description,
         c.name AS category_name,
+        s.name AS subject_name,
         COUNT(bc.id) AS total_copies,
         SUM(CASE WHEN bc.status = 'available' THEN 1 ELSE 0 END) AS available_copies
       FROM books b
       LEFT JOIN categories c ON b.category_id = c.id
+      LEFT JOIN subjects s ON b.subject_id = s.id
       LEFT JOIN book_copies bc ON b.id = bc.book_id
-      GROUP BY b.id, b.title, b.author, b.isbn, b.description, c.name
+      GROUP BY 
+        b.id,
+        b.title,
+        b.author,
+        b.isbn,
+        b.description,
+        c.name,
+        s.name
       ORDER BY b.id DESC
     `);
 
@@ -55,13 +65,22 @@ export const getBookById = async (req, res) => {
         b.isbn,
         b.description,
         c.name AS category_name,
+        s.name AS subject_name,
         COUNT(bc.id) AS total_copies,
         SUM(CASE WHEN bc.status = 'available' THEN 1 ELSE 0 END) AS available_copies
       FROM books b
       LEFT JOIN categories c ON b.category_id = c.id
+      LEFT JOIN subjects s ON b.subject_id = s.id
       LEFT JOIN book_copies bc ON b.id = bc.book_id
       WHERE b.id = ?
-      GROUP BY b.id, b.title, b.author, b.isbn, b.description, c.name
+      GROUP BY 
+        b.id,
+        b.title,
+        b.author,
+        b.isbn,
+        b.description,
+        c.name,
+        s.name
       `,
       [id]
     );
@@ -90,7 +109,8 @@ export const createBook = async (req, res) => {
       author,
       code,
       isbn,
-      discipline,
+      category,
+      subject,
       description,
       publishedYear,
       copies,
@@ -106,10 +126,10 @@ export const createBook = async (req, res) => {
 
     let categoryId = null;
 
-    if (discipline) {
+    if (category) {
       const [existingCategory] = await connection.query(
         "SELECT id FROM categories WHERE name = ?",
-        [discipline]
+        [category]
       );
 
       if (existingCategory.length > 0) {
@@ -117,9 +137,29 @@ export const createBook = async (req, res) => {
       } else {
         const [categoryResult] = await connection.query(
           "INSERT INTO categories (name) VALUES (?)",
-          [discipline]
+          [category]
         );
         categoryId = categoryResult.insertId;
+      }
+    }
+
+    let subjectId = null;
+
+    if (subject && categoryId) {
+      const [existingSubject] = await connection.query(
+        "SELECT id FROM subjects WHERE name = ? AND category_id = ?",
+        [subject.trim(), categoryId]
+      );
+
+      if (existingSubject.length > 0) {
+        subjectId = existingSubject[0].id;
+      } else {
+        const [subjectResult] = await connection.query(
+          "INSERT INTO subjects (category_id, name) VALUES (?, ?)",
+          [categoryId, subject.trim()]
+        );
+
+        subjectId = subjectResult.insertId;
       }
     }
 
@@ -128,8 +168,8 @@ export const createBook = async (req, res) => {
     const [bookResult] = await connection.query(
       `
       INSERT INTO books 
-        (title, author, published_year, isbn, category_id, description)
-      VALUES (?, ?, ?, ?, ?, ?)
+        (title, author, published_year, isbn, category_id, subject_id, description)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       `,
       [
         title.trim(),
@@ -137,6 +177,7 @@ export const createBook = async (req, res) => {
         publishedYear || null,
         bookIsbn,
         categoryId,
+        subjectId,
         description?.trim() || null,
       ]
     );
@@ -319,6 +360,71 @@ export const deleteBook = async (req, res) => {
     console.error("Delete book error:", error);
     return res.status(500).json({
       message: "Server error while deleting book.",
+    });
+  }
+};
+
+export const getCategories = async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT id, name
+      FROM categories
+      ORDER BY id ASC
+    `);
+
+    return res.json(
+      rows.map((row) => ({
+        id: String(row.id),
+        name: row.name,
+      }))
+    );
+  } catch (error) {
+    console.error("Get categories error:", error);
+
+    return res.status(500).json({
+      message: "Server error while loading categories.",
+    });
+  }
+};
+
+export const getSubjects = async (req, res) => {
+  try {
+    const { categoryId } = req.query;
+
+    let sql = `
+      SELECT 
+        s.id,
+        s.name,
+        s.category_id,
+        c.name AS category_name
+      FROM subjects s
+      JOIN categories c ON s.category_id = c.id
+    `;
+
+    const params = [];
+
+    if (categoryId) {
+      sql += ` WHERE s.category_id = ?`;
+      params.push(categoryId);
+    }
+
+    sql += ` ORDER BY c.name ASC, s.name ASC`;
+
+    const [rows] = await db.query(sql, params);
+
+    return res.json(
+      rows.map((row) => ({
+        id: String(row.id),
+        name: row.name,
+        categoryId: String(row.category_id),
+        categoryName: row.category_name,
+      }))
+    );
+  } catch (error) {
+    console.error("Get subjects error:", error);
+
+    return res.status(500).json({
+      message: "Server error while loading subjects.",
     });
   }
 };

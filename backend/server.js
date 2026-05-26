@@ -5,6 +5,9 @@ import authRoutes from "./routes/authRoutes.js";
 import bookRoutes from "./routes/bookRoutes.js";
 import borrowRoutes from "./routes/borrowRoutes.js";
 import reservationRoutes from "./routes/reservationRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+import shiftRoutes from "./routes/shiftRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js";
 
 dotenv.config();
 
@@ -23,6 +26,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/borrows", borrowRoutes);
 app.use("/api/reservations", reservationRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/shifts", shiftRoutes);
+app.use("/api/reports", reportRoutes);
 
 app.get("/", (req, res) => {
   res.send("IU Library backend is running.");

@@ -7,7 +7,7 @@ import './Auth.css'
 export function Login() {
   const { user, login } = useAuth()
   const navigate = useNavigate()
-  const [studentId, setStudentId] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [showRoleInfo, setShowRoleInfo] = useState(false)
@@ -20,7 +20,7 @@ export function Login() {
     e.preventDefault()
     setError('')
 
-    const result = await login(studentId, password)
+    const result = await login(username, password)
 
     if (result.error) {
       setError(result.error)
@@ -49,8 +49,8 @@ export function Login() {
           <label>
             Mã sinh viên / Giảng viên
             <input
-              value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               placeholder="VD: IT12345"
               required
               autoComplete="username"

@@ -1,43 +1,64 @@
-import { FormEvent, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useLibrary } from '../context/LibraryContext'
-import type { Book, BorrowRecord, Discipline } from '../types'
+import type { Book, BorrowRecord} from '../types'
 import './Dashboard.css'
-
-const DISCIPLINES: Discipline[] = [
-  'IT',
-  'Maths',
-  'Biology',
-  'Physics',
-  'Economics',
-  'Literature',
-  'Other',
-]
 
 export function StaffDashboard() {
   const { user } = useAuth()
-  const { books, borrowRecords, users } = useLibrary()
+  const {
+    books,
+    borrowRecords,
+    users,
+    borrowBook,
+    returnBook,
+    refreshLibraryData,
+  } = useLibrary()
 
   const [search, setSearch] = useState('')
-  const [discipline, setDiscipline] = useState<Discipline | 'All'>('All')
+  const [category, setCategory] = useState<string | 'All'>('All')
+  const [categories, setCategories] = useState<string[]>([])
   const [activeTab, setActiveTab] = useState<'books' | 'borrows' | 'returns' | 'overdue'>('books')
   const [toast, setToast] = useState<{ msg: string; type: 'info' | 'warn' } | null>(null)
 
   // Book management state
   const [showAddBook, setShowAddBook] = useState(false)
-  const [newBook, setNewBook] = useState<Partial<Book>>({ discipline: 'IT' })
+  const [newBook, setNewBook] = useState<Partial<Book>>({
+    title: '',
+    author: '',
+    code: '',
+    category: 'Programming',
+    subject: 'General',
+    shelf: '',
+    available: true,
+    copies: 1,
+    description: '',
+    publishedYear: undefined,
+  })
   const [editingBook, setEditingBook] = useState<Book | null>(null)
 
   // Borrow management state
-  const [borrowStudentId, setBorrowStudentId] = useState('')
+  const [borrowUserName, setBorrowUserName] = useState('')
   const [borrowBookId, setBorrowBookId] = useState('')
-
-  if (!user) return null
 
   const showToast = (msg: string, type: 'info' | 'warn' = 'info') => {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 4000)
   }
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/api/books/categories')
+        const data: { id: string; name: string }[] = await res.json()
+        setCategories(data.map((c) => c.name))
+      } catch (error) {
+        console.error('Load categories error:', error)
+      }
+    }
+
+    loadCategories()
+  }, [])
 
   // Get overdue books
   const overdueRecords = borrowRecords.filter((b) => {
@@ -55,45 +76,121 @@ export function StaffDashboard() {
   const filteredBooks = useMemo(() => {
     const q = search.trim().toLowerCase()
     return books.filter((b) => {
-      const matchDisc = discipline === 'All' || b.discipline === discipline
+      const matchCategory = category === 'All' || b.category === category
       const matchSearch =
         !q ||
         b.title.toLowerCase().includes(q) ||
         b.code.toLowerCase().includes(q) ||
         b.author.toLowerCase().includes(q)
-      return matchDisc && matchSearch
+      return matchCategory && matchSearch
     })
-  }, [books, search, discipline])
+  }, [books, search, category])
 
-  const handleAddBook = (e: FormEvent) => {
+  const handleAddBook = async (e: FormEvent) => {
     e.preventDefault()
-    if (!newBook.title || !newBook.code || !newBook.author) {
-      showToast('Vui lòng điền đầy đủ thông tin sách', 'warn')
+
+    if (!newBook.title || !newBook.author || !newBook.code || !newBook.category) {
+      showToast('Vui lòng nhập đầy đủ thông tin sách', 'warn')
       return
     }
-    // In a real app, you'd call an API here
-    showToast('Sách mới đã được thêm thành công', 'info')
-    setNewBook({ discipline: 'IT' })
-    setShowAddBook(false)
+
+    try {
+      const token = localStorage.getItem('iu-library-token')
+
+      const res = await fetch('http://localhost:5000/api/books', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: newBook.title,
+          author: newBook.author,
+          code: newBook.code,
+          category: newBook.category,
+          subject: newBook.subject || 'General',
+          publishedYear: newBook.publishedYear || null,
+          description: newBook.description || '',
+          copies: newBook.copies || 1,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        showToast(data.message || 'Không thể thêm sách', 'warn')
+        return
+      }
+
+      await refreshLibraryData()
+
+      setNewBook({
+        title: '',
+        author: '',
+        code: '',
+        category: 'Programming',
+        subject: 'General',
+        description: '',
+        publishedYear: undefined,
+        shelf: '',
+        available: true,
+        copies: 1,
+      })
+
+      showToast('Đã thêm sách mới vào thư viện', 'info')
+    } catch (error) {
+      console.error('Add book error:', error)
+      showToast('Không thể kết nối server', 'warn')
+    }
   }
 
-  const handleCreateBorrowRecord = (e: FormEvent) => {
+  const handleCreateBorrowRecord = async (e: FormEvent) => {
     e.preventDefault()
-    if (!borrowStudentId || !borrowBookId) {
-      showToast('Vui lòng chọn sinh viên và sách', 'warn')
+
+    if (!borrowUserName || !borrowBookId) {
+      showToast('Vui lòng chọn sinh viên/giảng viên và sách', 'warn')
       return
     }
-    // In a real app, you'd call an API here
+
+    const borrower = users.find((u) => u.id === borrowUserName)
+
+    if (!borrower) {
+      showToast('Không tìm thấy người mượn', 'warn')
+      return
+    }
+
+    const err = await borrowBook(borrower, borrowBookId)
+
+    if (err) {
+      showToast(err, 'warn')
+      return
+    }
+
     showToast('Hồ sơ mượn sách đã được tạo', 'info')
-    setBorrowStudentId('')
+    setBorrowUserName('')
     setBorrowBookId('')
   }
 
-  const handleConfirmReturn = (recordId: string) => {
-    // In a real app, you'd call an API here
-    showToast('Xác nhận trả sách thành công', 'info')
-  }
+  const handleConfirmReturn = async (recordId: string) => {
+    const record = borrowRecords.find((b) => b.id === recordId)
 
+    if (!record) {
+      showToast('Không tìm thấy hồ sơ mượn', 'warn')
+      return
+    }
+
+    const borrower = users.find((u) => u.id === record.userId)
+
+    if (!borrower) {
+      showToast('Không tìm thấy người mượn', 'warn')
+      return
+    }
+
+    const msg = await returnBook(borrower, recordId)
+
+    if (msg) showToast(msg, msg.includes('Phạt') ? 'warn' : 'info')
+    else showToast('Xác nhận trả sách thành công', 'info')
+  }
   const getUserName = (userId: string) => {
     return users.find((u) => u.id === userId)?.full_name ?? 'Unknown'
   }
@@ -101,6 +198,8 @@ export function StaffDashboard() {
   const getBookTitle = (bookId: string) => {
     return books.find((b) => b.id === bookId)?.title ?? 'Unknown'
   }
+
+  if (!user) return null
 
   return (
     <>
@@ -188,17 +287,65 @@ export function StaffDashboard() {
                     />
                   </label>
                   <label>
-                    Chuyên ngành
+                    Năm xuất bản
+                    <input
+                      type="number"
+                      value={newBook.publishedYear || ''}
+                      onChange={(e) =>
+                        setNewBook((prev) => ({
+                          ...prev,
+                          publishedYear: e.target.value ? Number(e.target.value) : undefined,
+                        }))
+                      }
+                      placeholder="VD: 2020"
+                    />
+                  </label>
+                  <label>
+                    Danh mục
                     <select
-                      value={newBook.discipline || 'IT'}
-                      onChange={(e) => setNewBook({ ...newBook, discipline: e.target.value as Discipline })}
+                      value={newBook.category || 'Programming'}
+                      onChange={(e) => setNewBook({ ...newBook, category: e.target.value })}
                     >
-                      {DISCIPLINES.map((d) => (
-                        <option key={d} value={d}>
-                          {d}
+                      {categories.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
                         </option>
                       ))}
                     </select>
+                  </label>
+                  <label>
+                    Chủ đề
+                    <input
+                      value={newBook.subject || ''}
+                      onChange={(e) =>
+                        setNewBook((prev) => ({ ...prev, subject: e.target.value }))
+                      }
+                      placeholder="VD: Software Engineering"
+                    />
+                  </label>
+                  <label>
+                    Mô tả
+                    <textarea
+                      value={newBook.description || ''}
+                      onChange={(e) =>
+                        setNewBook((prev) => ({ ...prev, description: e.target.value }))
+                      }
+                      placeholder="Nhập mô tả ngắn về sách"
+                    />
+                  </label>
+                  <label>
+                    Số lượng bản sao
+                    <input
+                      type="number"
+                      min="1"
+                      value={newBook.copies || 1}
+                      onChange={(e) =>
+                        setNewBook((prev) => ({
+                          ...prev,
+                          copies: Number(e.target.value),
+                        }))
+                      }
+                    />
                   </label>
                 </div>
                 <div className="form-row">
@@ -238,15 +385,15 @@ export function StaffDashboard() {
 
               <div className="filter-group">
                 <label>
-                  Chuyên ngành:
+                  Danh mục:
                   <select
-                    value={discipline}
-                    onChange={(e) => setDiscipline(e.target.value as Discipline | 'All')}
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value as string | 'All')}
                   >
                     <option value="All">Tất cả</option>
-                    {DISCIPLINES.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
+                    {categories.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
                       </option>
                     ))}
                   </select>
@@ -262,7 +409,7 @@ export function StaffDashboard() {
                       <th>Mã sách</th>
                       <th>Tên sách</th>
                       <th>Tác giả</th>
-                      <th>Chuyên ngành</th>
+                      <th>Danh mục</th>
                       <th>Vị trí</th>
                       <th>Trạng thái</th>
                       <th>Thao tác</th>
@@ -274,7 +421,7 @@ export function StaffDashboard() {
                         <td>{book.code}</td>
                         <td>{book.title}</td>
                         <td>{book.author}</td>
-                        <td>{book.discipline}</td>
+                        <td>{book.category}</td>
                         <td>{book.shelf}</td>
                         <td>
                           <span className={`status ${book.available ? 'available' : 'unavailable'}`}>
@@ -306,8 +453,8 @@ export function StaffDashboard() {
               <label>
                 Mã sinh viên / Giảng viên
                 <select
-                  value={borrowStudentId}
-                  onChange={(e) => setBorrowStudentId(e.target.value)}
+                  value={borrowUserName}
+                  onChange={(e) => setBorrowUserName(e.target.value)}
                   required
                 >
                   <option value="">-- Chọn người mượn --</option>
