@@ -17,8 +17,7 @@ function getAuthHeaders() {
 
 interface StaffMember {
   id: string
-  name: string
-  full_name?: string
+  full_name: string
   email: string
   username: string
   shifts: string[]
@@ -59,7 +58,7 @@ export function ManagerDashboard() {
   }, [])
 
   const [newStaff, setNewStaff] = useState({
-    name: '',
+    full_name: '',
     email: '',
     username: '',
   })
@@ -88,7 +87,7 @@ export function ManagerDashboard() {
   const handleAddStaff = async (e: FormEvent) => {
     e.preventDefault()
 
-    if (!newStaff.name || !newStaff.email || !newStaff.username) {
+    if (!newStaff.full_name || !newStaff.email || !newStaff.username) {
       showToast('Vui lòng điền đầy đủ thông tin', 'warn')
       return
     }
@@ -98,7 +97,7 @@ export function ManagerDashboard() {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
-          name: newStaff.name,
+          name: newStaff.full_name,
           email: newStaff.email,
           username: newStaff.username,
           position: 'Library Staff',
@@ -116,7 +115,7 @@ export function ManagerDashboard() {
       await loadStaff()
 
       showToast('Nhân viên mới đã được thêm thành công', 'info')
-      setNewStaff({ name: '', email: '', username: '' })
+      setNewStaff({ full_name: '', email: '', username: '' })
       setShowAddStaff(false)
     } catch (error) {
       console.error('Add staff error:', error)
@@ -285,8 +284,8 @@ export function ManagerDashboard() {
                 <label>
                   Họ và tên
                   <input
-                    value={newStaff.name}
-                    onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })}
+                    value={newStaff.full_name}
+                    onChange={(e) => setNewStaff({ ...newStaff, full_name: e.target.value })}
                     placeholder="Nhập tên nhân viên"
                     required
                   />
@@ -334,7 +333,7 @@ export function ManagerDashboard() {
                   {staffList.map((staff) => (
                     <tr key={staff.id}>
                       <td>{staff.username}</td>
-                      <td>{staff.name}</td>
+                      <td>{staff.full_name}</td>
                       <td>{staff.email}</td>
                       <td>
                         <span className="shifts-badge">
@@ -390,7 +389,7 @@ export function ManagerDashboard() {
                     .filter((s) => s.status === 'active')
                     .map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.name}
+                        {s.full_name}
                       </option>
                     ))}
                 </select>
@@ -431,7 +430,7 @@ export function ManagerDashboard() {
                     .filter((s) => s.shifts.length > 0)
                     .map((staff) => (
                       <tr key={staff.id}>
-                        <td>{staff.name}</td>
+                        <td>{staff.full_name}</td>
                         <td>
                           <div className="shifts-list">
                             {staff.shifts.map((shift) => (

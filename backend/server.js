@@ -6,6 +6,7 @@ import bookRoutes from "./routes/bookRoutes.js";
 import borrowRoutes from "./routes/borrowRoutes.js";
 import reservationRoutes from "./routes/reservationRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import staffRoutes from "./routes/staffRoutes.js";
 import shiftRoutes from "./routes/shiftRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 
@@ -27,8 +28,10 @@ app.use("/api/books", bookRoutes);
 app.use("/api/borrows", borrowRoutes);
 app.use("/api/reservations", reservationRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/staff", staffRoutes);
 app.use("/api/shifts", shiftRoutes);
 app.use("/api/reports", reportRoutes);
+
 
 app.get("/", (req, res) => {
   res.send("IU Library backend is running.");

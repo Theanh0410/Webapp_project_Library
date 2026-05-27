@@ -73,8 +73,8 @@ export function Dashboard() {
         b.title.toLowerCase().includes(q) ||
         b.code.toLowerCase().includes(q) ||
         b.author.toLowerCase().includes(q) ||
-        b.category.toLowerCase().includes(q) ||
-        b.subject.toLowerCase().includes(q)
+        (b.category || '').toLowerCase().includes(q) ||
+        (b.subject || '').toLowerCase().includes(q)
 
       return matchCategory && matchSearch
     })

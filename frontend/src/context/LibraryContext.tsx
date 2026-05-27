@@ -63,31 +63,52 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<User[]>([])
 
   const refreshLibraryData = useCallback(async () => {
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY)
+
+    const authHeaders = {
+      Authorization: `Bearer ${token}`,
+    }
+
     try {
-      const headers = getAuthHeaders()
+      // Load books first because books API does not need token
+      const booksRes = await fetch(`${API_URL}/books`)
 
-      const [booksRes, usersRes, borrowsRes, reservationsRes] =
-        await Promise.all([
-          fetch(`${API_URL}/books`),
-          fetch(`${API_URL}/users`, { headers }),
-          fetch(`${API_URL}/borrows`, { headers }),
-          fetch(`${API_URL}/reservations`, { headers }),
-        ])
+      if (booksRes.ok) {
+        const booksData = await booksRes.json()
+        setBooks(booksData)
+      } else {
+        console.error('Failed to load books')
+      }
 
-      if (!booksRes.ok) throw new Error('Failed to load books')
-      if (!usersRes.ok) throw new Error('Failed to load users')
-      if (!borrowsRes.ok) throw new Error('Failed to load borrow records')
-      if (!reservationsRes.ok) throw new Error('Failed to load reservations')
+      // If no token, stop here
+      if (!token) {
+        console.warn('No token found. Skipping protected library APIs.')
+        return
+      }
 
-      const booksData = await booksRes.json()
-      const usersData = await usersRes.json()
-      const borrowsData = await borrowsRes.json()
-      const reservationsData = await reservationsRes.json()
+      const [usersRes, borrowsRes, reservationsRes] = await Promise.all([
+        fetch(`${API_URL}/users`, { headers: authHeaders }),
+        fetch(`${API_URL}/borrows`, { headers: authHeaders }),
+        fetch(`${API_URL}/reservations`, { headers: authHeaders }),
+      ])
 
-      setBooks(booksData)
-      setUsers(usersData)
-      setBorrows(borrowsData)
-      setOrders(reservationsData)
+      if (usersRes.ok) {
+        setUsers(await usersRes.json())
+      } else {
+        console.error('Failed to load users:', await usersRes.text())
+      }
+
+      if (borrowsRes.ok) {
+        setBorrows(await borrowsRes.json())
+      } else {
+        console.error('Failed to load borrow records:', await borrowsRes.text())
+      }
+
+      if (reservationsRes.ok) {
+        setOrders(await reservationsRes.json())
+      } else {
+        console.error('Failed to load reservations:', await reservationsRes.text())
+      }
     } catch (error) {
       console.error('Load library data error:', error)
     }
