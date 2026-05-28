@@ -29,7 +29,7 @@ app.use("/api/borrows", borrowRoutes);
 app.use("/api/reservations", reservationRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/staff", staffRoutes);
-app.use("/api/shifts", shiftRoutes);
+app.use("/api", shiftRoutes);
 app.use("/api/reports", reportRoutes);
 
 
