@@ -2,30 +2,26 @@ export type UserRole = 'student' | 'lecturer' | 'staff' | 'manager'
 
 export interface User {
   id: string
-  studentId: string
-  name: string
+  username: string
+  full_name: string
   email: string
   role: UserRole
-  password: string
+  position?: string | null
 }
-
-export type Discipline =
-  | 'Maths'
-  | 'IT'
-  | 'Biology'
-  | 'Physics'
-  | 'Economics'
-  | 'Literature'
-  | 'Other'
 
 export interface Book {
   id: string
   code: string
   title: string
   author: string
-  discipline: Discipline
+  category: string
+  subject: string
   available: boolean
   shelf: string
+
+  publishedYear?: number | null
+  description?: string
+  copies?: number
 }
 
 export type BorrowStatus = 'active' | 'returned' | 'overdue'

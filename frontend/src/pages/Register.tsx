@@ -7,28 +7,34 @@ import './Auth.css'
 export function Register() {
   const { user, register } = useAuth()
   const navigate = useNavigate()
-  const [studentId, setStudentId] = useState('')
-  const [name, setName] = useState('')
+  const [username, setUsername] = useState('')
+  const [full_name, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<'student' | 'lecturer'>('student')
   const [error, setError] = useState('')
 
-  if (user) return <Navigate to="/dashboard" replace />
+  if (user) {
+    return <Navigate to="/dashboard" replace />
+  }
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
+
     if (password.length < 6) {
       setError('Mật khẩu tối thiểu 6 ký tự.')
       return
     }
-    const err = register({ studentId, name, email, password, role })
-    if (err) {
-      setError(err)
+
+    const result = await register({ username, full_name, email, password, role })
+
+    if (result.error) {
+      setError(result.error)
       return
     }
-    navigate('/dashboard')
+
+    navigate(result.redirectTo || '/dashboard')
   }
 
   return (
@@ -57,15 +63,15 @@ export function Register() {
           <label>
             Mã sinh viên / Mã giảng viên
             <input
-              value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               placeholder="VD: IT12345"
               required
             />
           </label>
           <label>
             Họ và tên
-            <input value={name} onChange={(e) => setName(e.target.value)} required />
+            <input value={full_name} onChange={(e) => setFullName(e.target.value)} required />
           </label>
           <label>
             Email

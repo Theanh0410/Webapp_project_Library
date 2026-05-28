@@ -4,6 +4,8 @@ import { Layout } from './components/Layout'
 import { useAuth } from './context/AuthContext'
 import { LibraryProvider } from './context/LibraryContext'
 import { Dashboard } from './pages/Dashboard'
+import { StaffDashboard } from './pages/StaffDashboard'
+import { ManagerDashboard } from './pages/ManagerDashboard'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
 
@@ -27,10 +29,26 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<Dashboard />} />
+          <Route index element={<DashboardRouter />} />
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </LibraryProvider>
   )
 }
+
+function DashboardRouter() {
+  const { user } = useAuth()
+
+  if (!user) return null
+
+  switch (user.role) {
+    case 'staff':
+      return <StaffDashboard />
+    case 'manager':
+      return <ManagerDashboard />
+    default:
+      return <Dashboard />
+  }
+}
+
