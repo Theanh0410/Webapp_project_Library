@@ -82,6 +82,10 @@ export function ManagerDashboard() {
     'Thursday Afternoon',
     'Friday Morning',
     'Friday Afternoon',
+    'Saturday Morning',
+    'Saturday Afternoon',
+    'Sunday Morning',
+    'Sunday Afternoon',
   ]
 
   const handleAddStaff = async (e: FormEvent) => {
@@ -97,7 +101,7 @@ export function ManagerDashboard() {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({
-          name: newStaff.full_name,
+          full_name: newStaff.full_name,
           email: newStaff.email,
           username: newStaff.username,
           position: 'Library Staff',
