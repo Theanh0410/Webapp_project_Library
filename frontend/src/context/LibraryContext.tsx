@@ -21,6 +21,10 @@ interface LibraryContextValue {
 
   borrowBook: (user: User, bookId: string) => Promise<string | null>
   returnBook: (user: User, borrowId: string) => Promise<string | null>
+  approveBorrowRequest: (borrowId: string) => Promise<string | null>
+  approveReturnRequest: (borrowId: string) => Promise<string | null>
+  getPendingApprovals: () => BorrowRecord[]
+  getPendingReturns: () => BorrowRecord[]
   orderBook: (user: User, bookId: string) => Promise<string | null>
   cancelOrder: (orderId: string) => Promise<void>
 
@@ -59,6 +63,8 @@ async function getApiError(res: Response, fallback: string) {
 export function LibraryProvider({ children }: { children: ReactNode }) {
   const [books, setBooks] = useState<Book[]>([])
   const [borrows, setBorrows] = useState<BorrowRecord[]>([])
+  const [pendingApprovals, setPendingApprovals] = useState<BorrowRecord[]>([])
+  const [pendingReturns, setPendingReturns] = useState<BorrowRecord[]>([])
   const [orders, setOrders] = useState<BookOrder[]>([])
   const [users, setUsers] = useState<User[]>([])
 
@@ -109,6 +115,24 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       } else {
         console.error('Failed to load reservations:', await reservationsRes.text())
       }
+
+      // Load pending approvals and returns
+      const [approvalsRes, returnsRes] = await Promise.all([
+        fetch(`${API_URL}/borrows/pending-approvals`, { headers: authHeaders }),
+        fetch(`${API_URL}/borrows/pending-returns`, { headers: authHeaders }),
+      ])
+
+      if (approvalsRes.ok) {
+        setPendingApprovals(await approvalsRes.json())
+      } else {
+        console.error('Failed to load pending approvals:', await approvalsRes.text())
+      }
+
+      if (returnsRes.ok) {
+        setPendingReturns(await returnsRes.json())
+      } else {
+        console.error('Failed to load pending returns:', await returnsRes.text())
+      }
     } catch (error) {
       console.error('Load library data error:', error)
     }
@@ -134,6 +158,12 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       const msgs: string[] = []
 
       borrows
+        .filter((b) => b.userId === String(userId) && b.status === 'pending_approval')
+        .forEach(() => {
+          msgs.push('Bạn có yêu cầu mượn sách đang chờ phê duyệt')
+        })
+
+      borrows
         .filter((b) => b.userId === String(userId) && b.status === 'active')
         .forEach((b) => {
           const book = books.find((bk) => bk.id === b.bookId)
@@ -147,6 +177,12 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           } else if (daysBetween(today, b.dueDate) <= 3) {
             msgs.push(`Sắp hết hạn: "${book?.title}" — trả trước ${b.dueDate}`)
           }
+        })
+
+      borrows
+        .filter((b) => b.userId === String(userId) && b.status === 'pending_return_approval')
+        .forEach(() => {
+          msgs.push('Bạn có yêu cầu trả sách đang chờ phê duyệt')
         })
 
       orders
@@ -202,14 +238,55 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         }
 
         await refreshLibraryData()
-
-        if (data?.borrowRecord?.penalty) {
-          return `Đã trả sách. Phạt trễ hạn: ${data.borrowRecord.penalty.toLocaleString('vi-VN')}đ`
-        }
-
-        return null
+        return data?.message || 'Yêu cầu trả sách đã được gửi, chờ phê duyệt.'
       } catch (error) {
         console.error('Return book error:', error)
+        return 'Không thể kết nối server.'
+      }
+    },
+    [refreshLibraryData],
+  )
+
+  const approveBorrowRequest = useCallback(
+    async (borrowId: string) => {
+      try {
+        const res = await fetch(`${API_URL}/borrows/${borrowId}/approve`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+        })
+
+        if (!res.ok) {
+          return await getApiError(res, 'Không thể phê duyệt yêu cầu mượn.')
+        }
+
+        await refreshLibraryData()
+        return null
+      } catch (error) {
+        console.error('Approve borrow request error:', error)
+        return 'Không thể kết nối server.'
+      }
+    },
+    [refreshLibraryData],
+  )
+
+  const approveReturnRequest = useCallback(
+    async (borrowId: string) => {
+      try {
+        const res = await fetch(`${API_URL}/borrows/${borrowId}/approve-return`, {
+          method: 'PUT',
+          headers: getAuthHeaders(),
+        })
+
+        const data = await res.json().catch(() => null)
+
+        if (!res.ok) {
+          return data?.message || 'Không thể phê duyệt yêu cầu trả.'
+        }
+
+        await refreshLibraryData()
+        return null
+      } catch (error) {
+        console.error('Approve return request error:', error)
         return 'Không thể kết nối server.'
       }
     },
@@ -263,6 +340,16 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     [refreshLibraryData],
   )
 
+  const getPendingApprovals = useCallback(
+    () => pendingApprovals,
+    [pendingApprovals],
+  )
+
+  const getPendingReturns = useCallback(
+    () => pendingReturns,
+    [pendingReturns],
+  )
+
   const value = useMemo(
     () => ({
       books,
@@ -272,6 +359,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
       borrowBook,
       returnBook,
+      approveBorrowRequest,
+      approveReturnRequest,
+      getPendingApprovals,
+      getPendingReturns,
       orderBook,
       cancelOrder,
 
@@ -288,6 +379,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       users,
       borrowBook,
       returnBook,
+      approveBorrowRequest,
+      approveReturnRequest,
+      getPendingApprovals,
+      getPendingReturns,
       orderBook,
       cancelOrder,
       refreshLibraryData,

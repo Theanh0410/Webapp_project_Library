@@ -24,7 +24,7 @@ export interface Book {
   copies?: number
 }
 
-export type BorrowStatus = 'active' | 'returned' | 'overdue'
+export type BorrowStatus = 'active' | 'returned' | 'overdue' | 'pending_approval' | 'pending_return_approval' | 'approved'
 
 export interface BorrowRecord {
   id: string
