@@ -38,10 +38,11 @@
   font-size: 1rem;
 }
 
+
 .auth-card {
-  max-width: 420px;
+  max-width: 546px;       
   margin: 0 auto 48px;
-  padding: 32px;
+  padding: 42px;          
   border: 1px solid var(--iu-gray-border);
   border-radius: 4px;
   box-shadow: var(--shadow-card);
@@ -50,32 +51,32 @@
 
 .auth-card h2 {
   color: var(--iu-navy);
-  font-size: 1.25rem;
-  margin-bottom: 20px;
+  font-size: 1.625rem;     
+  margin-bottom: 26px;    
   text-align: center;
 }
 
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 21px;            
 }
 
 .auth-form label {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 0.9rem;
+  gap: 8px;                
+  font-size: 1.17rem;      
   font-weight: 600;
   color: var(--iu-navy);
 }
 
 .auth-form input,
 .auth-form select {
-  padding: 10px 12px;
+  padding: 13px 16px;     
   border: 1px solid var(--iu-gray-border);
   border-radius: 4px;
-  font-size: 1rem;
+  font-size: 1.3rem;   
 }
 
 .auth-form input:focus,
@@ -87,28 +88,28 @@
 .auth-error {
   background: #ffebee;
   color: var(--iu-red);
-  padding: 10px 12px;
+  padding: 13px 16px;     
   border-radius: 4px;
-  font-size: 0.9rem;
+  font-size: 1.17rem;     
 }
 
 .auth-success {
   background: #e8f5e9;
   color: #2e7d32;
-  padding: 10px 12px;
+  padding: 13px 16px;
   border-radius: 4px;
-  font-size: 0.9rem;
+  font-size: 1.17rem;
 }
 
 .auth-btn {
   background: var(--iu-navy);
   color: var(--iu-white);
   border: none;
-  padding: 12px;
-  font-size: 1rem;
+  padding: 16px;           
+  font-size: 1.3rem;      
   font-weight: 600;
   border-radius: 4px;
-  margin-top: 8px;
+  margin-top: 10px;      
   transition: background 0.15s;
 }
 
@@ -118,8 +119,8 @@
 
 .auth-switch {
   text-align: center;
-  margin-top: 20px;
-  font-size: 0.9rem;
+  margin-top: 26px;       
+  font-size: 1.17rem;    
   color: var(--iu-gray-text);
 }
 
@@ -133,10 +134,10 @@
 }
 
 .auth-demo {
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top: 21px;        
+  padding-top: 21px;
   border-top: 1px dashed var(--iu-gray-border);
-  font-size: 0.8rem;
+  font-size: 1.04rem;      
   color: var(--iu-gray-text);
   line-height: 1.6;
 }
@@ -145,19 +146,4 @@
   background: var(--iu-gray-bg);
   padding: 2px 6px;
   border-radius: 3px;
-}
-
-.demo-toggle {
-  background: none;
-  border: none;
-  color: var(--iu-red);
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
-  font-size: 0.8rem;
-  text-decoration: underline;
-}
-
-.demo-toggle:hover {
-  opacity: 0.8;
 }
