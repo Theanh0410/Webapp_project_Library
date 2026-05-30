@@ -137,11 +137,9 @@ CREATE TABLE borrow_records (
     borrow_date DATE NOT NULL,
     due_date DATE NOT NULL,
     return_date DATE NULL,
-    status ENUM('pending_approval', 'approved', 'pending_return_approval', 'returned', 'overdue') 
-        NOT NULL DEFAULT 'pending_approval',
+    status ENUM('borrowed', 'returned', 'overdue') 
+        NOT NULL DEFAULT 'borrowed',
     created_by_staff_user_id INT,
-    approved_by_staff_user_id INT,
-    return_approved_by_staff_user_id INT,
 
     CONSTRAINT fk_borrow_records_user
         FOREIGN KEY (borrower_user_id)
@@ -157,18 +155,6 @@ CREATE TABLE borrow_records (
 
     CONSTRAINT fk_borrow_records_staff
         FOREIGN KEY (created_by_staff_user_id)
-        REFERENCES staff(user_id)
-        ON DELETE SET NULL
-        ON UPDATE CASCADE,
-
-    CONSTRAINT fk_borrow_records_staff_approved
-        FOREIGN KEY (approved_by_staff_user_id)
-        REFERENCES staff(user_id)
-        ON DELETE SET NULL
-        ON UPDATE CASCADE,
-
-    CONSTRAINT fk_borrow_records_staff_return_approved
-        FOREIGN KEY (return_approved_by_staff_user_id)
         REFERENCES staff(user_id)
         ON DELETE SET NULL
         ON UPDATE CASCADE

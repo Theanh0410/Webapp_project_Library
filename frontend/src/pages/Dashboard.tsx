@@ -53,17 +53,11 @@ export function Dashboard() {
   }, [])
 
   const reminders = user ? getReminders(user.id) : []
-  const myPendingApprovals = user
-    ? getUserBorrows(user.id).filter((b) => b.status === 'pending_approval')
-    : []
-  const myPendingReturns = user
-    ? getUserBorrows(user.id).filter((b) => b.status === 'pending_return_approval')
-    : []
   const myBorrows = user
-    ? getUserBorrows(user.id).filter((b) => b.status === 'active' || b.status === 'approved')
+    ? getUserBorrows(user.id).filter((b) => b.status === 'active')
     : []
   const myHistory = user
-    ? getUserBorrows(user.id).filter((b) => b.status !== 'active' && b.status !== 'pending_approval' && b.status !== 'pending_return_approval' && b.status !== 'approved')
+    ? getUserBorrows(user.id).filter((b) => b.status !== 'active')
     : []
   const myOrders = user
     ? getUserOrders(user.id).filter((o) => o.status !== 'cancelled')
@@ -91,7 +85,7 @@ export function Dashboard() {
   const handleBorrow = async (bookId: string) => {
     const err = await borrowBook(user, bookId)
     if (err) showToast(err, 'warn')
-    else showToast('Yêu cầu mượn sách đã được gửi. Chờ nhân viên phê duyệt.')
+    else showToast('Mượn sách thành công! Vui lòng trả đúng hạn.')
   }
 
   const handleReturn = async (borrowId: string) => {
@@ -136,50 +130,6 @@ export function Dashboard() {
             ))}
           </ul>
         </aside>
-      )}
-
-      {myPendingApprovals.length > 0 && (
-        <section id="pending-approvals">
-          <h2 className="section-title">Yêu cầu mượn chờ phê duyệt</h2>
-          <div className="borrow-list">
-            {myPendingApprovals.map((br) => {
-              const book = books.find((b) => b.id === br.bookId)
-              return (
-                <article key={br.id} className="borrow-item">
-                  <div className="borrow-item__info">
-                    <strong>{book?.title ?? '—'}</strong>
-                    <span className="borrow-item__dates">
-                      Mã: {book?.code} · Ngày yêu cầu: {br.borrowDate} · Hạn trả: {br.dueDate}
-                    </span>
-                  </div>
-                  <span className="status-badge status-badge--pending">⏳ Chờ phê duyệt</span>
-                </article>
-              )
-            })}
-          </div>
-        </section>
-      )}
-
-      {myPendingReturns.length > 0 && (
-        <section id="pending-returns">
-          <h2 className="section-title">Yêu cầu trả sách chờ phê duyệt</h2>
-          <div className="borrow-list">
-            {myPendingReturns.map((br) => {
-              const book = books.find((b) => b.id === br.bookId)
-              return (
-                <article key={br.id} className="borrow-item">
-                  <div className="borrow-item__info">
-                    <strong>{book?.title ?? '—'}</strong>
-                    <span className="borrow-item__dates">
-                      Mã: {book?.code} · Hạn trả: {br.dueDate}
-                    </span>
-                  </div>
-                  <span className="status-badge status-badge--pending">⏳ Chờ phê duyệt</span>
-                </article>
-              )
-            })}
-          </div>
-        </section>
       )}
 
       {myBorrows.length > 0 && (
