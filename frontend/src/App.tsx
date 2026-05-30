@@ -6,7 +6,6 @@ import { LibraryProvider } from './context/LibraryContext'
 import { Dashboard } from './pages/Dashboard'
 import { StaffDashboard } from './pages/StaffDashboard'
 import { ManagerDashboard } from './pages/ManagerDashboard'
-import { ApprovalDashboard } from './pages/ApprovalDashboard'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
 
@@ -31,16 +30,6 @@ export default function App() {
           }
         >
           <Route index element={<DashboardRouter />} />
-        </Route>
-        <Route
-          path="/approvals"
-          element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<ApprovalDashboard />} />
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
