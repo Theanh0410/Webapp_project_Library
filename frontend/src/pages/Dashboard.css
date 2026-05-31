@@ -235,6 +235,28 @@
   color: var(--iu-gray-text);
 }
 
+.status-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 4px;
+}
+
+.status-badge--pending {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.btn--approve {
+  background: #4caf50;
+  color: var(--iu-white);
+}
+
+.btn--approve:hover:not(:disabled) {
+  background: #45a049;
+}
+
 .user-badge {
   display: inline-block;
   background: var(--iu-navy);
@@ -267,6 +289,105 @@
   background: var(--iu-navy);
   color: var(--iu-white);
   border-color: var(--iu-navy);
+}
+
+/* Approval Dashboard Styles */
+.dashboard-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.dashboard-container h1 {
+  color: var(--iu-navy);
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+}
+
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--iu-gray-border);
+}
+
+.tab-button {
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: var(--iu-gray-text);
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.tab-button.active {
+  color: var(--iu-red);
+  border-bottom-color: var(--iu-red);
+}
+
+.tab-button:hover:not(.active) {
+  color: var(--iu-navy);
+}
+
+.tab-content {
+  padding: 20px 0;
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--iu-gray-text);
+  padding: 40px 20px;
+  font-size: 1rem;
+}
+
+.borrow-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 16px;
+  border: 1px solid var(--iu-gray-border);
+  border-radius: 4px;
+  background: var(--iu-white);
+  margin-bottom: 12px;
+}
+
+.borrow-info h3 {
+  color: var(--iu-navy);
+  margin-bottom: 10px;
+}
+
+.borrow-details {
+  font-size: 0.9rem;
+  color: var(--iu-gray-text);
+  margin: 4px 0;
+}
+
+.borrow-details.penalty {
+  color: var(--iu-red);
+  font-weight: 600;
+}
+
+.status {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  margin-top: 8px;
+}
+
+.status-pending_approval,
+.status-pending_return_approval {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.borrow-actions {
+  display: flex;
+  gap: 8px;
+  min-width: 120px;
 }
 
 /* Staff Dashboard Styles */

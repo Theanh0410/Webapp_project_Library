@@ -67,11 +67,17 @@ export function Dashboard() {
   }, [])
 
   const reminders = user ? getReminders(user.id) : []
+  const myPendingApprovals = user
+    ? getUserBorrows(user.id).filter((b) => b.status === 'pending_approval')
+    : []
+  const myPendingReturns = user
+    ? getUserBorrows(user.id).filter((b) => b.status === 'pending_return_approval')
+    : []
   const myBorrows = user
-    ? getUserBorrows(user.id).filter((b) => b.status === 'active')
+    ? getUserBorrows(user.id).filter((b) => b.status === 'active' || b.status === 'approved')
     : []
   const myHistory = user
-    ? getUserBorrows(user.id).filter((b) => b.status !== 'active')
+    ? getUserBorrows(user.id).filter((b) => b.status !== 'active' && b.status !== 'pending_approval' && b.status !== 'pending_return_approval' && b.status !== 'approved')
     : []
   const myOrders = user
     ? getUserOrders(user.id).filter((o) => o.status !== 'cancelled')
@@ -99,7 +105,7 @@ export function Dashboard() {
   const handleBorrow = async (bookId: string) => {
     const err = await borrowBook(user, bookId)
     if (err) showToast(err, 'warn')
-    else showToast('Mượn sách thành công! Vui lòng trả đúng hạn.')
+    else showToast('Yêu cầu mượn sách đã được gửi. Chờ nhân viên phê duyệt.')
   }
 
   const handleReturn = async (borrowId: string) => {

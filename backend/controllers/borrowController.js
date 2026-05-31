@@ -15,11 +15,14 @@ function getMaxBooks(role) {
 }
 
 function mapBorrowStatus(dbStatus, dueDate, returnDate) {
+  if (dbStatus === "pending_approval") return "pending_approval";
+  if (dbStatus === "pending_return_approval") return "pending_return_approval";
   if (dbStatus === "returned") return "returned";
   if (dbStatus === "overdue") return "overdue";
 
   const today = new Date().toISOString().slice(0, 10);
-  if (!returnDate && dueDate < today) return "overdue";
+  if (dbStatus === "approved" && !returnDate && dueDate < today) return "overdue";
+  if (dbStatus === "approved") return "active";
 
   return "active";
 }
@@ -69,6 +72,8 @@ export const getBorrowRecords = async (req, res) => {
         br.due_date,
         br.return_date,
         br.status,
+        br.approved_by_staff_user_id,
+        br.return_approved_by_staff_user_id,
         bc.book_id,
         b.title AS book_title,
         u.full_name AS borrower_name,
@@ -142,7 +147,7 @@ export const createBorrowRecord = async (req, res) => {
       SELECT id
       FROM borrow_records
       WHERE borrower_user_id = ?
-      AND status = 'borrowed'
+      AND status = 'approved'
       `,
       [requestedUserId]
     );
@@ -194,15 +199,16 @@ export const createBorrowRecord = async (req, res) => {
       INSERT INTO borrow_records
         (borrower_user_id, book_copy_id, borrow_date, due_date, status, created_by_staff_user_id)
       VALUES
-        (?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL ? DAY), 'borrowed', ?)
+        (?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL ? DAY), 'pending_approval', ?)
       `,
       [requestedUserId, bookCopyId, borrowDays, staffUserId]
     );
 
-    await connection.query(
-      `UPDATE book_copies SET status = 'borrowed' WHERE id = ?`,
-      [bookCopyId]
-    );
+    // Don't update book_copies status yet - wait for approval
+    // await connection.query(
+    //   `UPDATE book_copies SET status = 'borrowed' WHERE id = ?`,
+    //   [bookCopyId]
+    // );
 
     const [createdRows] = await connection.query(
       `
@@ -214,6 +220,8 @@ export const createBorrowRecord = async (req, res) => {
         br.due_date,
         br.return_date,
         br.status,
+        br.approved_by_staff_user_id,
+        br.return_approved_by_staff_user_id,
         bc.book_id
       FROM borrow_records br
       JOIN book_copies bc ON br.book_copy_id = bc.id
@@ -225,7 +233,7 @@ export const createBorrowRecord = async (req, res) => {
     await connection.commit();
 
     return res.status(201).json({
-      message: "Borrow record created successfully.",
+      message: "Borrow request created and waiting for staff approval.",
       borrowRecord: mapBorrowRecord(createdRows[0]),
     });
   } catch (error) {
@@ -258,6 +266,8 @@ export const returnBorrowRecord = async (req, res) => {
         br.due_date,
         br.return_date,
         br.status,
+        br.approved_by_staff_user_id,
+        br.return_approved_by_staff_user_id,
         bc.book_id
       FROM borrow_records br
       JOIN book_copies bc ON br.book_copy_id = bc.id
@@ -276,13 +286,291 @@ export const returnBorrowRecord = async (req, res) => {
 
     const record = records[0];
 
-    if (record.status !== "borrowed") {
+    if (record.status !== "approved") {
       await connection.rollback();
       return res.status(400).json({
-        message: "This book has already been returned.",
+        message: "Only approved borrow records can be returned.",
       });
     }
 
+    await connection.query(
+      `
+      UPDATE borrow_records
+      SET status = 'pending_return_approval'
+      WHERE id = ?
+      `,
+      [id]
+    );
+
+    const [updatedRows] = await connection.query(
+      `
+      SELECT
+        br.id,
+        br.borrower_user_id,
+        br.book_copy_id,
+        br.borrow_date,
+        br.due_date,
+        br.return_date,
+        br.status,
+        br.approved_by_staff_user_id,
+        br.return_approved_by_staff_user_id,
+        bc.book_id
+      FROM borrow_records br
+      JOIN book_copies bc ON br.book_copy_id = bc.id
+      WHERE br.id = ?
+      `,
+      [id]
+    );
+
+    await connection.commit();
+
+    return res.json({
+      message: "Return request submitted. Waiting for staff approval.",
+      borrowRecord: mapBorrowRecord(updatedRows[0]),
+    });
+  } catch (error) {
+    await connection.rollback();
+    console.error("Return borrow record error:", error);
+
+    return res.status(500).json({
+      message: "Server error while requesting book return.",
+    });
+  } finally {
+    connection.release();
+  }
+};
+
+export const getPendingApprovals = async (req, res) => {
+  try {
+    let sql = `
+      SELECT
+        br.id,
+        br.borrower_user_id,
+        br.book_copy_id,
+        br.borrow_date,
+        br.due_date,
+        br.return_date,
+        br.status,
+        br.approved_by_staff_user_id,
+        br.return_approved_by_staff_user_id,
+        bc.book_id,
+        b.title AS book_title,
+        u.full_name AS borrower_name,
+        u.username AS borrower_username
+      FROM borrow_records br
+      JOIN book_copies bc ON br.book_copy_id = bc.id
+      JOIN books b ON bc.book_id = b.id
+      JOIN users u ON br.borrower_user_id = u.id
+      WHERE br.status = 'pending_approval'
+      ORDER BY br.id DESC
+    `;
+
+    const [rows] = await db.query(sql);
+
+    return res.json(rows.map(mapBorrowRecord));
+  } catch (error) {
+    console.error("Get pending approvals error:", error);
+    return res.status(500).json({
+      message: "Server error while loading pending approvals.",
+    });
+  }
+};
+
+export const approveBorrowRequest = async (req, res) => {
+  const connection = await db.getConnection();
+
+  try {
+    const { id } = req.params;
+
+    // Check if staff is making the request
+    if (req.user.role !== "staff" && req.user.role !== "manager") {
+      return res.status(403).json({
+        message: "Only staff can approve borrow requests.",
+      });
+    }
+
+    await connection.beginTransaction();
+
+    const [records] = await connection.query(
+      `
+      SELECT
+        br.id,
+        br.borrower_user_id,
+        br.book_copy_id,
+        br.borrow_date,
+        br.due_date,
+        br.return_date,
+        br.status,
+        br.approved_by_staff_user_id,
+        br.return_approved_by_staff_user_id,
+        bc.book_id
+      FROM borrow_records br
+      JOIN book_copies bc ON br.book_copy_id = bc.id
+      WHERE br.id = ?
+      FOR UPDATE
+      `,
+      [id]
+    );
+
+    if (records.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({
+        message: "Borrow record not found.",
+      });
+    }
+
+    const record = records[0];
+
+    if (record.status !== "pending_approval") {
+      await connection.rollback();
+      return res.status(400).json({
+        message: "This borrow request is not pending approval.",
+      });
+    }
+
+    // Update borrow record status and approved staff
+    await connection.query(
+      `
+      UPDATE borrow_records
+      SET status = 'approved', approved_by_staff_user_id = ?
+      WHERE id = ?
+      `,
+      [req.user.id, id]
+    );
+
+    // Update book_copies status to borrowed
+    await connection.query(
+      `UPDATE book_copies SET status = 'borrowed' WHERE id = ?`,
+      [record.book_copy_id]
+    );
+
+    const [updatedRows] = await connection.query(
+      `
+      SELECT
+        br.id,
+        br.borrower_user_id,
+        br.book_copy_id,
+        br.borrow_date,
+        br.due_date,
+        br.return_date,
+        br.status,
+        br.approved_by_staff_user_id,
+        br.return_approved_by_staff_user_id,
+        bc.book_id
+      FROM borrow_records br
+      JOIN book_copies bc ON br.book_copy_id = bc.id
+      WHERE br.id = ?
+      `,
+      [id]
+    );
+
+    await connection.commit();
+
+    return res.json({
+      message: "Borrow request approved.",
+      borrowRecord: mapBorrowRecord(updatedRows[0]),
+    });
+  } catch (error) {
+    await connection.rollback();
+    console.error("Approve borrow request error:", error);
+
+    return res.status(500).json({
+      message: "Server error while approving borrow request.",
+    });
+  } finally {
+    connection.release();
+  }
+};
+
+export const getPendingReturns = async (req, res) => {
+  try {
+    let sql = `
+      SELECT
+        br.id,
+        br.borrower_user_id,
+        br.book_copy_id,
+        br.borrow_date,
+        br.due_date,
+        br.return_date,
+        br.status,
+        br.approved_by_staff_user_id,
+        br.return_approved_by_staff_user_id,
+        bc.book_id,
+        b.title AS book_title,
+        u.full_name AS borrower_name,
+        u.username AS borrower_username
+      FROM borrow_records br
+      JOIN book_copies bc ON br.book_copy_id = bc.id
+      JOIN books b ON bc.book_id = b.id
+      JOIN users u ON br.borrower_user_id = u.id
+      WHERE br.status = 'pending_return_approval'
+      ORDER BY br.id DESC
+    `;
+
+    const [rows] = await db.query(sql);
+
+    return res.json(rows.map(mapBorrowRecord));
+  } catch (error) {
+    console.error("Get pending returns error:", error);
+    return res.status(500).json({
+      message: "Server error while loading pending returns.",
+    });
+  }
+};
+
+export const approveReturnRequest = async (req, res) => {
+  const connection = await db.getConnection();
+
+  try {
+    const { id } = req.params;
+
+    // Check if staff is making the request
+    if (req.user.role !== "staff" && req.user.role !== "manager") {
+      return res.status(403).json({
+        message: "Only staff can approve return requests.",
+      });
+    }
+
+    await connection.beginTransaction();
+
+    const [records] = await connection.query(
+      `
+      SELECT
+        br.id,
+        br.borrower_user_id,
+        br.book_copy_id,
+        br.borrow_date,
+        br.due_date,
+        br.return_date,
+        br.status,
+        br.approved_by_staff_user_id,
+        br.return_approved_by_staff_user_id,
+        bc.book_id
+      FROM borrow_records br
+      JOIN book_copies bc ON br.book_copy_id = bc.id
+      WHERE br.id = ?
+      FOR UPDATE
+      `,
+      [id]
+    );
+
+    if (records.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({
+        message: "Borrow record not found.",
+      });
+    }
+
+    const record = records[0];
+
+    if (record.status !== "pending_return_approval") {
+      await connection.rollback();
+      return res.status(400).json({
+        message: "This return request is not pending approval.",
+      });
+    }
+
+    // Update borrow record: set return date and final status
     await connection.query(
       `
       UPDATE borrow_records
@@ -291,12 +579,14 @@ export const returnBorrowRecord = async (req, res) => {
         status = CASE
           WHEN due_date < CURDATE() THEN 'overdue'
           ELSE 'returned'
-        END
+        END,
+        return_approved_by_staff_user_id = ?
       WHERE id = ?
       `,
-      [id]
+      [req.user.id, id]
     );
 
+    // Update book_copies status to available
     await connection.query(
       `UPDATE book_copies SET status = 'available' WHERE id = ?`,
       [record.book_copy_id]
@@ -312,6 +602,8 @@ export const returnBorrowRecord = async (req, res) => {
         br.due_date,
         br.return_date,
         br.status,
+        br.approved_by_staff_user_id,
+        br.return_approved_by_staff_user_id,
         bc.book_id
       FROM borrow_records br
       JOIN book_copies bc ON br.book_copy_id = bc.id
@@ -326,16 +618,16 @@ export const returnBorrowRecord = async (req, res) => {
 
     return res.json({
       message: updatedRecord.penalty
-        ? `Book returned. Penalty: ${updatedRecord.penalty.toLocaleString("vi-VN")}đ`
-        : "Book returned successfully.",
+        ? `Return approved. Penalty: ${updatedRecord.penalty.toLocaleString("vi-VN")}đ`
+        : "Return approved successfully.",
       borrowRecord: updatedRecord,
     });
   } catch (error) {
     await connection.rollback();
-    console.error("Return borrow record error:", error);
+    console.error("Approve return request error:", error);
 
     return res.status(500).json({
-      message: "Server error while returning book.",
+      message: "Server error while approving return request.",
     });
   } finally {
     connection.release();
@@ -358,7 +650,7 @@ export const getBorrowReminders = async (req, res) => {
       FROM borrow_records br
       JOIN book_copies bc ON br.book_copy_id = bc.id
       JOIN books b ON bc.book_id = b.id
-      WHERE br.status = 'borrowed'
+      WHERE br.status = 'approved'
     `;
 
     const params = [];
