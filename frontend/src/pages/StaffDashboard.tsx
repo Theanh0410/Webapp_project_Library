@@ -1,10 +1,12 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLibrary } from '../context/LibraryContext'
 import type { Book, BorrowRecord} from '../types'
 import './Dashboard.css'
 
 export function StaffDashboard() {
+  const location = useLocation()
   const { user } = useAuth()
   const {
     books,
@@ -45,6 +47,21 @@ export function StaffDashboard() {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 4000)
   }
+
+  useEffect(() => {
+    const hash = location.hash.replace('#', '')
+
+    if (
+      hash === 'books' ||
+      hash === 'borrows' ||
+      hash === 'returns' ||
+      hash === 'overdue'
+    ) {
+      setActiveTab(hash as 'books' | 'borrows' | 'returns' | 'overdue')
+    } else {
+      setActiveTab('books')
+    }
+  }, [location.hash])
 
   useEffect(() => {
     const loadCategories = async () => {

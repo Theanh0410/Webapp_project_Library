@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLibrary } from '../context/LibraryContext'
 import './Dashboard.css'
@@ -27,6 +28,7 @@ interface StaffMember {
 export function ManagerDashboard() {
   const { user } = useAuth()
   const { users } = useLibrary()
+  const location = useLocation()
 
   const [activeTab, setActiveTab] = useState<'staff' | 'shifts'>('staff')
   const [toast, setToast] = useState<{ msg: string; type: 'info' | 'warn' } | null>(null)
@@ -54,9 +56,18 @@ export function ManagerDashboard() {
   }
 
   useEffect(() => {
-    loadStaff()
-  }, [])
+    const hash = location.hash.replace('#', '')
 
+    if (hash === 'staff' || hash === 'shifts') {
+      setActiveTab(hash)
+    } else {
+      setActiveTab('staff')
+    }
+  }, [location.hash])
+
+    useEffect(() => {
+      loadStaff()
+    }, [])
   const [newStaff, setNewStaff] = useState({
     full_name: '',
     email: '',
