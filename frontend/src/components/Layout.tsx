@@ -12,7 +12,7 @@ const STUDENT_LECTURER_NAV = [
 
 const STAFF_NAV = [
   { label: 'QUẢN LÝ SÁCH', path: '/dashboard#books' },
-  { label: 'TẠO HỒ SƠ MƯỢN', path: '/dashboard#borrows' },
+  { label: 'HỒ SƠ MƯỢN', path: '/dashboard#borrows' },
   { label: 'PHÊ DUYỆT MƯỢN', path: '/dashboard#approvals' },
   { label: 'XÁC NHẬN TRẢ', path: '/dashboard#returns' },
   { label: 'SÁCH QUÁ HẠN', path: '/dashboard#overdue' },
