@@ -681,3 +681,62 @@ legend {
   font-size: 0.85rem;
 }
 
+/* Approval Sub-tabs within Staff Dashboard */
+.approval-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--iu-gray-border);
+  padding-bottom: 0;
+}
+
+.approval-tab {
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: var(--iu-gray-text);
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.approval-tab.active {
+  color: var(--iu-red);
+  border-bottom-color: var(--iu-red);
+}
+
+.approval-tab:hover:not(.active) {
+  color: var(--iu-navy);
+}
+
+.approval-content {
+  padding: 20px 0;
+}
+
+.borrow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn-approve {
+  background: var(--iu-red);
+  color: var(--iu-white);
+  padding: 10px 16px;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-approve:hover:not(:disabled) {
+  background: #c41e3a;
+}
+
+.btn-approve:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
