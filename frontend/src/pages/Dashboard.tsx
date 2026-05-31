@@ -80,7 +80,7 @@ export function Dashboard() {
     ? getUserBorrows(user.id).filter((b) => b.status !== 'active' && b.status !== 'pending_approval' && b.status !== 'pending_return_approval' && b.status !== 'approved')
     : []
   const myOrders = user
-    ? getUserOrders(user.id).filter((o) => o.status !== 'cancelled')
+    ? getUserOrders(user.id).filter((o) => o.status === 'pending')
     : []
 
   const filteredBooks = useMemo(() => {
@@ -261,8 +261,7 @@ export function Dashboard() {
                     <div className="borrow-item__info">
                       <strong>{book?.title ?? '—'}</strong>
                       <span className="borrow-item__dates">
-                        Ngày đặt: {ord.orderDate} ·{' '}
-                        {ord.status === 'ready' ? 'Sẵn sàng nhận' : 'Đang chờ'}
+                        Ngày đặt: {ord.orderDate} ·{' '} Đang chờ
                       </span>
                     </div>
 

@@ -268,7 +268,7 @@ export const processReadyReservations = async (bookId) => {
       await connection.query(
         `
         UPDATE reservations
-        SET status = 'approved'
+        SET status = 'completed'
         WHERE id = ?
         `,
         [reservation.id]
@@ -345,7 +345,7 @@ export const processReadyReservations = async (bookId) => {
     await connection.query(
       `
       UPDATE reservations
-      SET status = 'approved'
+      SET status = 'completed'
       WHERE id = ?
       `,
       [reservation.id]
