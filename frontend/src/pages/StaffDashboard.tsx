@@ -2,8 +2,19 @@ import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLibrary } from '../context/LibraryContext'
-import type { Book, BorrowRecord} from '../types'
+import type { Book, BorrowRecord } from '../types'
 import './Dashboard.css'
+
+const API_URL = 'http://localhost:5000/api'
+
+function getAuthHeaders() {
+  const token = localStorage.getItem('iu-library-token')
+
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  }
+}
 
 export function StaffDashboard() {
   const location = useLocation()
@@ -13,17 +24,22 @@ export function StaffDashboard() {
     borrowRecords,
     users,
     borrowBook,
-    returnBook,
+    approveBorrowRequest,
+    approveReturnRequest,
+    getPendingApprovals,
+    getPendingReturns,
     refreshLibraryData,
   } = useLibrary()
 
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<string | 'All'>('All')
   const [categories, setCategories] = useState<string[]>([])
-  const [activeTab, setActiveTab] = useState<'books' | 'borrows' | 'returns' | 'overdue'>('books')
+  const [activeTab, setActiveTab] = useState<
+    'books' | 'borrows' | 'returns' | 'overdue' | 'approvals'
+  >('books')
   const [toast, setToast] = useState<{ msg: string; type: 'info' | 'warn' } | null>(null)
+  const [loadingId, setLoadingId] = useState<string | null>(null)
 
-  // Book management state
   const [showAddBook, setShowAddBook] = useState(false)
   const [newBook, setNewBook] = useState<Partial<Book>>({
     title: '',
@@ -37,9 +53,9 @@ export function StaffDashboard() {
     description: '',
     publishedYear: undefined,
   })
+
   const [editingBook, setEditingBook] = useState<Book | null>(null)
 
-  // Borrow management state
   const [borrowUserName, setBorrowUserName] = useState('')
   const [borrowBookId, setBorrowBookId] = useState('')
 
@@ -55,13 +71,18 @@ export function StaffDashboard() {
       hash === 'books' ||
       hash === 'borrows' ||
       hash === 'returns' ||
-      hash === 'overdue'
+      hash === 'overdue' ||
+      hash === 'approvals'
     ) {
-      setActiveTab(hash as 'books' | 'borrows' | 'returns' | 'overdue')
+      setActiveTab(hash as 'books' | 'borrows' | 'returns' | 'overdue' | 'approvals')
     } else {
       setActiveTab('books')
     }
   }, [location.hash])
+
+  useEffect(() => {
+    refreshLibraryData()
+  }, [refreshLibraryData])
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -77,21 +98,15 @@ export function StaffDashboard() {
     loadCategories()
   }, [])
 
-  // Get overdue books
   const overdueRecords = borrowRecords.filter((b) => {
     if (b.status !== 'active') return false
     const dueDate = new Date(b.dueDate)
     return dueDate < new Date()
   })
 
-  // Get pending returns (books that are marked as returned but not yet processed)
-  const pendingReturns = borrowRecords.filter(
-    (b) => b.status === 'active' && b.returnDate === undefined,
-  )
-
-  // Filter books
   const filteredBooks = useMemo(() => {
     const q = search.trim().toLowerCase()
+
     return books.filter((b) => {
       const matchCategory = category === 'All' || b.category === category
       const matchSearch =
@@ -99,6 +114,7 @@ export function StaffDashboard() {
         b.title.toLowerCase().includes(q) ||
         b.code.toLowerCase().includes(q) ||
         b.author.toLowerCase().includes(q)
+
       return matchCategory && matchSearch
     })
   }, [books, search, category])
@@ -154,7 +170,7 @@ export function StaffDashboard() {
         copies: 1,
       })
 
-      showToast('Đã thêm sách mới vào thư viện', 'info')
+      showToast('Đã thêm sách mới vào thư viện')
     } catch (error) {
       console.error('Add book error:', error)
       showToast('Không thể kết nối server', 'warn')
@@ -183,31 +199,81 @@ export function StaffDashboard() {
       return
     }
 
-    showToast('Hồ sơ mượn sách đã được tạo', 'info')
+    showToast('Hồ sơ mượn sách đã được tạo')
     setBorrowUserName('')
     setBorrowBookId('')
   }
 
-  const handleConfirmReturn = async (recordId: string) => {
-    const record = borrowRecords.find((b) => b.id === recordId)
+  const handleApproveBorrow = async (borrowId: string) => {
+    setLoadingId(borrowId)
+
+    const err = await approveBorrowRequest(borrowId)
+
+    setLoadingId(null)
+
+    if (err) {
+      showToast(err, 'warn')
+      return
+    }
+
+    showToast('Phê duyệt yêu cầu mượn thành công')
+    await refreshLibraryData()
+  }
+
+  const handleApproveReturn = async (borrowId: string) => {
+    const record = borrowRecords.find((b) => b.id === borrowId)
 
     if (!record) {
-      showToast('Không tìm thấy hồ sơ mượn', 'warn')
+      showToast('Không tìm thấy hồ sơ trả sách', 'warn')
       return
     }
 
-    const borrower = users.find((u) => u.id === record.userId)
+    setLoadingId(borrowId)
 
-    if (!borrower) {
-      showToast('Không tìm thấy người mượn', 'warn')
+    const err = await approveReturnRequest(borrowId)
+
+    if (err) {
+      setLoadingId(null)
+      showToast(err, 'warn')
       return
     }
 
-    const msg = await returnBook(borrower, recordId)
+    try {
+      const res = await fetch('http://localhost:5000/api/reservations/process-ready', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('iu-library-token')}`,
+        },
+        body: JSON.stringify({
+          bookId: record.bookId,
+        }),
+      })
 
-    if (msg) showToast(msg, msg.includes('Phạt') ? 'warn' : 'info')
-    else showToast('Xác nhận trả sách thành công', 'info')
+      const data = await res.json()
+
+      if (!res.ok) {
+        console.error('Process reservation failed:', data)
+        showToast('Trả sách thành công, nhưng xử lý đặt trước bị lỗi.', 'warn')
+        setLoadingId(null)
+        await refreshLibraryData()
+        return
+      }
+
+      if (data.created) {
+        showToast('Trả sách thành công. Yêu cầu đặt trước đã được chuyển thành yêu cầu mượn.')
+      } else {
+        showToast('Trả sách thành công. Không có đặt trước cần xử lý.')
+      }
+    } catch (error) {
+      console.error('Process reservation error:', error)
+      showToast('Trả sách thành công, nhưng không thể xử lý đặt trước.', 'warn')
+    }
+
+    setLoadingId(null)
+    await refreshLibraryData()
   }
+
   const getUserName = (userId: string) => {
     return users.find((u) => u.id === userId)?.full_name ?? 'Unknown'
   }
@@ -226,48 +292,14 @@ export function StaffDashboard() {
         <p>Quản lý sách, hồ sơ mượn, xác nhận trả sách và kiểm tra sách quá hạn</p>
       </section>
 
-      {toast && (
-        <div className={`toast toast--${toast.type}`}>
-          {toast.msg}
-        </div>
-      )}
+      {toast && <div className={`toast toast--${toast.type}`}>{toast.msg}</div>}
 
       <div className="staff-dashboard">
-        <div className="staff-tabs">
-          <button
-            className={`staff-tab ${activeTab === 'books' ? 'active' : ''}`}
-            onClick={() => setActiveTab('books')}
-          >
-            📚 Quản lý sách
-          </button>
-          <button
-            className={`staff-tab ${activeTab === 'borrows' ? 'active' : ''}`}
-            onClick={() => setActiveTab('borrows')}
-          >
-            ➕ Tạo hồ sơ mượn
-          </button>
-          <button
-            className={`staff-tab ${activeTab === 'returns' ? 'active' : ''}`}
-            onClick={() => setActiveTab('returns')}
-          >
-            ✓ Xác nhận trả sách
-          </button>
-          <button
-            className={`staff-tab ${activeTab === 'overdue' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overdue')}
-          >
-            ⚠️ Sách quá hạn ({overdueRecords.length})
-          </button>
-        </div>
-
-        {/* Books Management */}
         {activeTab === 'books' && (
           <div className="staff-section">
             <h2>Quản lý sách</h2>
-            <button
-              className="btn-primary"
-              onClick={() => setShowAddBook(!showAddBook)}
-            >
+
+            <button className="btn-primary" onClick={() => setShowAddBook(!showAddBook)}>
               {showAddBook ? '✕ Hủy' : '✚ Thêm sách mới'}
             </button>
 
@@ -283,6 +315,7 @@ export function StaffDashboard() {
                       required
                     />
                   </label>
+
                   <label>
                     Tên sách
                     <input
@@ -293,6 +326,7 @@ export function StaffDashboard() {
                     />
                   </label>
                 </div>
+
                 <div className="form-row">
                   <label>
                     Tác giả
@@ -303,6 +337,7 @@ export function StaffDashboard() {
                       required
                     />
                   </label>
+
                   <label>
                     Năm xuất bản
                     <input
@@ -317,6 +352,7 @@ export function StaffDashboard() {
                       placeholder="VD: 2020"
                     />
                   </label>
+
                   <label>
                     Danh mục
                     <select
@@ -330,6 +366,7 @@ export function StaffDashboard() {
                       ))}
                     </select>
                   </label>
+
                   <label>
                     Chủ đề
                     <input
@@ -340,6 +377,7 @@ export function StaffDashboard() {
                       placeholder="VD: Software Engineering"
                     />
                   </label>
+
                   <label>
                     Mô tả
                     <textarea
@@ -350,6 +388,7 @@ export function StaffDashboard() {
                       placeholder="Nhập mô tả ngắn về sách"
                     />
                   </label>
+
                   <label>
                     Số lượng bản sao
                     <input
@@ -365,6 +404,7 @@ export function StaffDashboard() {
                     />
                   </label>
                 </div>
+
                 <div className="form-row">
                   <label>
                     Vị trí kệ
@@ -375,15 +415,19 @@ export function StaffDashboard() {
                       required
                     />
                   </label>
+
                   <label>
                     Có sẵn
                     <input
                       type="checkbox"
                       checked={newBook.available !== false}
-                      onChange={(e) => setNewBook({ ...newBook, available: e.target.checked })}
+                      onChange={(e) =>
+                        setNewBook({ ...newBook, available: e.target.checked })
+                      }
                     />
                   </label>
                 </div>
+
                 <button type="submit" className="btn-primary">
                   Thêm sách
                 </button>
@@ -432,6 +476,7 @@ export function StaffDashboard() {
                       <th>Thao tác</th>
                     </tr>
                   </thead>
+
                   <tbody>
                     {filteredBooks.map((book) => (
                       <tr key={book.id}>
@@ -446,10 +491,7 @@ export function StaffDashboard() {
                           </span>
                         </td>
                         <td>
-                          <button
-                            className="btn-small"
-                            onClick={() => setEditingBook(book)}
-                          >
+                          <button className="btn-small" onClick={() => setEditingBook(book)}>
                             Sửa
                           </button>
                         </td>
@@ -462,10 +504,10 @@ export function StaffDashboard() {
           </div>
         )}
 
-        {/* Create Borrow Record */}
         {activeTab === 'borrows' && (
           <div className="staff-section">
             <h2>Tạo hồ sơ mượn sách</h2>
+
             <form className="borrow-form" onSubmit={handleCreateBorrowRecord}>
               <label>
                 Mã sinh viên / Giảng viên
@@ -484,17 +526,25 @@ export function StaffDashboard() {
                     ))}
                 </select>
               </label>
+
               <label>
                 Sách
-                <select value={borrowBookId} onChange={(e) => setBorrowBookId(e.target.value)} required>
+                <select
+                  value={borrowBookId}
+                  onChange={(e) => setBorrowBookId(e.target.value)}
+                  required
+                >
                   <option value="">-- Chọn sách --</option>
-                  {books.filter((b) => b.available).map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.code} - {b.title}
-                    </option>
-                  ))}
+                  {books
+                    .filter((b) => b.available)
+                    .map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.code} - {b.title}
+                      </option>
+                    ))}
                 </select>
               </label>
+
               <button type="submit" className="btn-primary">
                 Tạo hồ sơ
               </button>
@@ -502,12 +552,12 @@ export function StaffDashboard() {
           </div>
         )}
 
-        {/* Confirm Returns */}
         {activeTab === 'returns' && (
           <div className="staff-section">
             <h2>Xác nhận trả sách</h2>
-            {pendingReturns.length === 0 ? (
-              <p className="empty-state">Không có hồ sơ chờ xác nhận trả sách</p>
+
+            {getPendingReturns().length === 0 ? (
+              <p className="empty-state">Không có yêu cầu trả sách đang chờ phê duyệt</p>
             ) : (
               <table className="staff-table">
                 <thead>
@@ -516,22 +566,26 @@ export function StaffDashboard() {
                     <th>Tên sách</th>
                     <th>Ngày mượn</th>
                     <th>Hạn trả</th>
+                    <th>Trạng thái</th>
                     <th>Thao tác</th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {pendingReturns.map((record) => (
+                  {getPendingReturns().map((record: BorrowRecord) => (
                     <tr key={record.id}>
                       <td>{getUserName(record.userId)}</td>
                       <td>{getBookTitle(record.bookId)}</td>
                       <td>{record.borrowDate}</td>
                       <td>{record.dueDate}</td>
+                      <td>{record.status === 'pending_return_approval' ? 'Chờ phê duyệt trả': record.status}</td>
                       <td>
                         <button
                           className="btn-primary"
-                          onClick={() => handleConfirmReturn(record.id)}
+                          onClick={() => handleApproveReturn(record.id)}
+                          disabled={loadingId === record.id}
                         >
-                          Xác nhận
+                          {loadingId === record.id ? 'Đang xử lý...' : 'Phê duyệt'}
                         </button>
                       </td>
                     </tr>
@@ -542,10 +596,10 @@ export function StaffDashboard() {
           </div>
         )}
 
-        {/* Overdue Books */}
         {activeTab === 'overdue' && (
           <div className="staff-section">
             <h2>Sách quá hạn</h2>
+
             {overdueRecords.length === 0 ? (
               <p className="empty-state">Không có sách nào quá hạn</p>
             ) : (
@@ -559,12 +613,14 @@ export function StaffDashboard() {
                     <th>Thao tác</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {overdueRecords.map((record) => {
                     const daysOverdue = Math.floor(
                       (new Date().getTime() - new Date(record.dueDate).getTime()) /
-                      (1000 * 60 * 60 * 24),
+                        (1000 * 60 * 60 * 24),
                     )
+
                     return (
                       <tr key={record.id}>
                         <td>{getUserName(record.userId)}</td>
@@ -579,6 +635,54 @@ export function StaffDashboard() {
                   })}
                 </tbody>
               </table>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'approvals' && (
+          <div className="staff-section">
+            <h2>Phê duyệt mượn sách</h2>
+
+            {getPendingApprovals().length === 0 ? (
+              <p className="empty-state">Không có yêu cầu mượn sách đang chờ phê duyệt</p>
+            ) : (
+              <div className="borrow-list">
+                {getPendingApprovals().map((record: BorrowRecord) => (
+                  <div key={record.id} className="borrow-card">
+                    <div className="borrow-info">
+                      <h3>{getBookTitle(record.bookId)}</h3>
+
+                      <p className="borrow-details">
+                        <strong>Người mượn:</strong> {getUserName(record.userId)}
+                      </p>
+
+                      <p className="borrow-details">
+                        <strong>Ngày mượn:</strong> {record.borrowDate}
+                      </p>
+
+                      <p className="borrow-details">
+                        <strong>Hạn trả:</strong> {record.dueDate}
+                      </p>
+
+                      <p className={`status status-${record.status}`}>
+                        {record.status === 'pending_approval'
+                          ? 'Chờ phê duyệt mượn'
+                          : record.status}
+                      </p>
+                    </div>
+
+                    <div className="borrow-actions">
+                      <button
+                        className="btn btn-approve"
+                        onClick={() => handleApproveBorrow(record.id)}
+                        disabled={loadingId === record.id}
+                      >
+                        {loadingId === record.id ? 'Đang xử lý...' : 'Phê duyệt'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}

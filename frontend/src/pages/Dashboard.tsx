@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLibrary } from '../context/LibraryContext'
 import './Dashboard.css'
@@ -12,6 +13,8 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function Dashboard() {
   const { user } = useAuth()
+  const location = useLocation()
+
   const {
     books,
     borrowBook,
@@ -25,6 +28,7 @@ export function Dashboard() {
 
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<string | 'All'>('All')
+  const [activeTab, setActiveTab] = useState<'library' | 'borrow' | 'orders' | 'history'>('library',)
   const [categories, setCategories] = useState<string[]>(['All'])
   const [toast, setToast] = useState<{ msg: string; type: 'info' | 'warn' } | null>(null)
 
@@ -32,6 +36,16 @@ export function Dashboard() {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 4000)
   }
+
+  useEffect(() => {
+    const hash = location.hash.replace('#', '')
+
+    if (hash === 'borrow' || hash === 'orders' || hash === 'history') {
+      setActiveTab(hash)
+    } else {
+      setActiveTab('library')
+    }
+  }, [location.hash])
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -138,183 +152,226 @@ export function Dashboard() {
         </aside>
       )}
 
-      {myPendingApprovals.length > 0 && (
-        <section id="pending-approvals">
-          <h2 className="section-title">Yêu cầu mượn chờ phê duyệt</h2>
-          <div className="borrow-list">
-            {myPendingApprovals.map((br) => {
-              const book = books.find((b) => b.id === br.bookId)
-              return (
-                <article key={br.id} className="borrow-item">
-                  <div className="borrow-item__info">
-                    <strong>{book?.title ?? '—'}</strong>
-                    <span className="borrow-item__dates">
-                      Mã: {book?.code} · Ngày yêu cầu: {br.borrowDate} · Hạn trả: {br.dueDate}
-                    </span>
-                  </div>
-                  <span className="status-badge status-badge--pending">⏳ Chờ phê duyệt</span>
-                </article>
-              )
-            })}
-          </div>
-        </section>
+      {activeTab === 'borrow' && (
+        <>
+          {myPendingApprovals.length > 0 && (
+            <section id="pending-approvals">
+              <h2 className="section-title">Yêu cầu mượn chờ phê duyệt</h2>
+
+              <div className="borrow-list">
+                {myPendingApprovals.map((br) => {
+                  const book = books.find((b) => b.id === br.bookId)
+
+                  return (
+                    <article key={br.id} className="borrow-item">
+                      <div className="borrow-item__info">
+                        <strong>{book?.title ?? '—'}</strong>
+                        <span className="borrow-item__dates">
+                          Mã: {book?.code} · Ngày yêu cầu: {br.borrowDate} · Hạn trả:{' '}
+                          {br.dueDate}
+                        </span>
+                      </div>
+
+                      <span className="status-badge status-badge--pending">
+                        ⏳ Chờ phê duyệt
+                      </span>
+                    </article>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+
+          {myPendingReturns.length > 0 && (
+            <section id="pending-returns">
+              <h2 className="section-title">Yêu cầu trả sách chờ phê duyệt</h2>
+
+              <div className="borrow-list">
+                {myPendingReturns.map((br) => {
+                  const book = books.find((b) => b.id === br.bookId)
+
+                  return (
+                    <article key={br.id} className="borrow-item">
+                      <div className="borrow-item__info">
+                        <strong>{book?.title ?? '—'}</strong>
+                        <span className="borrow-item__dates">
+                          Mã: {book?.code} · Hạn trả: {br.dueDate}
+                        </span>
+                      </div>
+
+                      <span className="status-badge status-badge--pending">
+                        ⏳ Chờ phê duyệt
+                      </span>
+                    </article>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+
+          <section id="borrow">
+            <h2 className="section-title">Sách đang mượn</h2>
+
+            {myBorrows.length === 0 ? (
+              <p className="empty-state">Không có sách đang mượn</p>
+            ) : (
+              <div className="borrow-list">
+                {myBorrows.map((br) => {
+                  const book = books.find((b) => b.id === br.bookId)
+
+                  return (
+                    <article key={br.id} className="borrow-item">
+                      <div className="borrow-item__info">
+                        <strong>{book?.title ?? '—'}</strong>
+                        <span className="borrow-item__dates">
+                          Mã: {book?.code} · Mượn: {br.borrowDate} · Hạn trả:{' '}
+                          {br.dueDate}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="btn btn--danger"
+                        onClick={() => handleReturn(br.id)}
+                      >
+                        Trả sách
+                      </button>
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        </>
       )}
 
-      {myPendingReturns.length > 0 && (
-        <section id="pending-returns">
-          <h2 className="section-title">Yêu cầu trả sách chờ phê duyệt</h2>
-          <div className="borrow-list">
-            {myPendingReturns.map((br) => {
-              const book = books.find((b) => b.id === br.bookId)
-              return (
-                <article key={br.id} className="borrow-item">
-                  <div className="borrow-item__info">
-                    <strong>{book?.title ?? '—'}</strong>
-                    <span className="borrow-item__dates">
-                      Mã: {book?.code} · Hạn trả: {br.dueDate}
-                    </span>
-                  </div>
-                  <span className="status-badge status-badge--pending">⏳ Chờ phê duyệt</span>
-                </article>
-              )
-            })}
-          </div>
-        </section>
-      )}
-
-      {myBorrows.length > 0 && (
-        <section id="borrow">
-          <h2 className="section-title">Sách đang mượn</h2>
-          <div className="borrow-list">
-            {myBorrows.map((br) => {
-              const book = books.find((b) => b.id === br.bookId)
-              return (
-                <article key={br.id} className="borrow-item">
-                  <div className="borrow-item__info">
-                    <strong>{book?.title ?? '—'}</strong>
-                    <span className="borrow-item__dates">
-                      Mã: {book?.code} · Mượn: {br.borrowDate} · Hạn trả: {br.dueDate}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn--danger"
-                    onClick={() => handleReturn(br.id)}
-                  >
-                    Trả sách
-                  </button>
-                </article>
-              )
-            })}
-          </div>
-        </section>
-      )}
-
-      {myOrders.length > 0 && (
+      {activeTab === 'orders' && (
         <section id="orders">
           <h2 className="section-title">Đặt trước</h2>
-          <div className="borrow-list">
-            {myOrders.map((ord) => {
-              const book = books.find((b) => b.id === ord.bookId)
-              return (
-                <article key={ord.id} className="borrow-item">
-                  <div className="borrow-item__info">
-                    <strong>{book?.title ?? '—'}</strong>
-                    <span className="borrow-item__dates">
-                      Ngày đặt: {ord.orderDate} ·{' '}
-                      {ord.status === 'ready' ? 'Sẵn sàng nhận' : 'Đang chờ'}
-                    </span>
-                  </div>
-                  {ord.status === 'pending' && (
-                    <button
-                      type="button"
-                      className="btn btn--secondary"
-                      onClick={async () => {
-                        await cancelOrder(ord.id)
-                        showToast('Đã hủy đặt trước.', 'info')
-                      }}
-                    >
-                      Hủy
-                    </button>
-                  )}
-                </article>
-              )
-            })}
+
+          {myOrders.length === 0 ? (
+            <p className="empty-state">Không có sách đang đặt trước</p>
+          ) : (
+            <div className="borrow-list">
+              {myOrders.map((ord) => {
+                const book = books.find((b) => b.id === ord.bookId)
+
+                return (
+                  <article key={ord.id} className="borrow-item">
+                    <div className="borrow-item__info">
+                      <strong>{book?.title ?? '—'}</strong>
+                      <span className="borrow-item__dates">
+                        Ngày đặt: {ord.orderDate} ·{' '}
+                        {ord.status === 'ready' ? 'Sẵn sàng nhận' : 'Đang chờ'}
+                      </span>
+                    </div>
+
+                    {ord.status === 'pending' && (
+                      <button
+                        type="button"
+                        className="btn btn--secondary"
+                        onClick={async () => {
+                          await cancelOrder(ord.id)
+                          showToast('Đã hủy đặt trước.', 'info')
+                        }}
+                      >
+                        Hủy
+                      </button>
+                    )}
+                  </article>
+                )
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {activeTab === 'library' && (
+        <section>
+          <h2 className="section-title">Danh mục sách</h2>
+
+          <div className="discipline-filters">
+            {categories.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={`filter-chip ${category === c ? 'filter-chip--active' : ''}`}
+                onClick={() => setCategory(c)}
+              >
+                {c === 'All' ? 'Tất cả' : c}
+              </button>
+            ))}
+          </div>
+
+          <div className="book-grid">
+            {filteredBooks.map((book) => (
+              <article key={book.id} className="book-card">
+                <span className="book-card__code">{book.code}</span>
+
+                <h3 className="book-card__title">{book.title}</h3>
+
+                <p className="book-card__meta">
+                  {book.author} · {book.category} · {book.subject} · Kệ {book.shelf}
+                </p>
+
+                <span
+                  className={`book-card__badge ${
+                    book.available ? 'book-card__badge--ok' : 'book-card__badge--busy'
+                  }`}
+                >
+                  {book.available ? 'Còn sách' : 'Đã mượn'}
+                </span>
+
+                <div className="book-card__actions">
+                  <button
+                    type="button"
+                    className="btn btn--primary"
+                    disabled={!book.available}
+                    onClick={() => handleBorrow(book.id)}
+                  >
+                    Mượn
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn--secondary"
+                    disabled={book.available}
+                    onClick={() => handleOrder(book.id)}
+                  >
+                    Đặt trước
+                  </button>
+                </div>
+              </article>
+            ))}
           </div>
         </section>
       )}
 
-      <section>
-        <h2 className="section-title">Danh mục sách</h2>
-        <div className="discipline-filters">
-          {categories.map((c) => (
-            <button
-              key={c}
-              type="button"
-              className={`filter-chip ${category === c ? 'filter-chip--active' : ''}`}
-              onClick={() => setCategory(c)}
-            >
-              {c === 'All' ? 'Tất cả' : c}
-            </button>
-          ))}
-        </div>
-        <div className="book-grid">
-          {filteredBooks.map((book) => (
-            <article key={book.id} className="book-card">
-              <span className="book-card__code">{book.code}</span>
-              <h3 className="book-card__title">{book.title}</h3>
-              <p className="book-card__meta">
-                {book.author} · {book.category} · {book.subject} · Kệ {book.shelf}
-              </p>
-              <span
-                className={`book-card__badge ${book.available ? 'book-card__badge--ok' : 'book-card__badge--busy'}`}
-              >
-                {book.available ? 'Còn sách' : 'Đã mượn'}
-              </span>
-              <div className="book-card__actions">
-                <button
-                  type="button"
-                  className="btn btn--primary"
-                  disabled={!book.available}
-                  onClick={() => handleBorrow(book.id)}
-                >
-                  Mượn
-                </button>
-                <button
-                  type="button"
-                  className="btn btn--secondary"
-                  disabled={book.available}
-                  onClick={() => handleOrder(book.id)}
-                >
-                  Đặt trước
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {myHistory.length > 0 && (
+      {activeTab === 'history' && (
         <section id="history">
           <h2 className="section-title">Lịch sử mượn</h2>
-          <div className="borrow-list">
-            {myHistory.map((br) => {
-              const book = books.find((b) => b.id === br.bookId)
-              return (
-                <article key={br.id} className="borrow-item">
-                  <div className="borrow-item__info">
-                    <strong>{book?.title ?? '—'}</strong>
-                    <span className="borrow-item__dates">
-                      {br.borrowDate} → {br.returnDate ?? '—'}
-                      {br.penalty
-                        ? ` · Phạt: ${br.penalty.toLocaleString('vi-VN')}đ`
-                        : ''}
-                    </span>
-                  </div>
-                </article>
-              )
-            })}
-          </div>
+
+          {myHistory.length === 0 ? (
+            <p className="empty-state">Không có lịch sử mượn sách</p>
+          ) : (
+            <div className="borrow-list">
+              {myHistory.map((br) => {
+                const book = books.find((b) => b.id === br.bookId)
+
+                return (
+                  <article key={br.id} className="borrow-item">
+                    <div className="borrow-item__info">
+                      <strong>{book?.title ?? '—'}</strong>
+                      <span className="borrow-item__dates">
+                        {br.borrowDate} → {br.returnDate ?? '—'}
+                        {br.penalty ? ` · Phạt: ${br.penalty.toLocaleString('vi-VN')}đ` : ''}
+                      </span>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          )}
         </section>
       )}
 

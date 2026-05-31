@@ -1,7 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { useLibrary } from '../context/LibraryContext'
 import './Dashboard.css'
 
 const API_URL = 'http://localhost:5000/api'
@@ -27,7 +26,6 @@ interface StaffMember {
 
 export function ManagerDashboard() {
   const { user } = useAuth()
-  const { users } = useLibrary()
   const location = useLocation()
 
   const [activeTab, setActiveTab] = useState<'staff' | 'shifts'>('staff')
@@ -266,21 +264,6 @@ export function ManagerDashboard() {
             <span className="stat-value">{staffList.length}</span>
             <span className="stat-label">Tổng nhân viên</span>
           </div>
-        </div>
-
-        <div className="manager-tabs">
-          <button
-            className={`manager-tab ${activeTab === 'staff' ? 'active' : ''}`}
-            onClick={() => setActiveTab('staff')}
-          >
-            👥 Quản lý nhân viên
-          </button>
-          <button
-            className={`manager-tab ${activeTab === 'shifts' ? 'active' : ''}`}
-            onClick={() => setActiveTab('shifts')}
-          >
-            📅 Phân công ca làm việc
-          </button>
         </div>
 
         {/* Staff Management */}
