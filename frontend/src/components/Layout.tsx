@@ -38,46 +38,50 @@ export function Layout() {
 
   return (
     <div className="iu-app">
-      <div className="iu-utility-bar">
-        <div className="iu-utility-bar__inner">
-          <Link to="/dashboard">IU Library Portal</Link>
-          <span>|</span>
-          <a href="https://hcmiu.edu.vn" target="_blank" rel="noreferrer">
-            HCMIU
-          </a>
-          <span>|</span>
-          <span>Student Email</span>
-          {user && (
-            <>
-              <span className="iu-utility-bar__spacer" />
-              <span className="iu-utility-bar__user">
-                {user.full_name} ({user.username})
-              </span>
-              <button type="button" className="iu-utility-bar__logout" onClick={handleLogout}>
-                Đăng xuất
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      <header className="iu-header">
-        <div className="iu-header__inner">
-          <Link to="/dashboard">
+      <div className="iu-top">
+        <div className="iu-top__inner">
+          <Link to="/dashboard" className="iu-top__logo">
             <Logo />
           </Link>
-        </div>
-      </header>
 
-      <nav className="iu-nav">
-        <div className="iu-nav__inner">
-          {navItems.map((item) => (
-            <Link key={item.path} to={item.path} className="iu-nav__link">
-              {item.label}
-            </Link>
-          ))}
+          <div className="iu-top__content">
+            <div className="iu-utility-bar">
+              <div className="iu-utility-bar__inner">
+                <a href="#">IU Library Portal</a>
+                <span>|</span>
+                <a href="https://hcmiu.edu.vn" target="_blank" rel="noreferrer">
+                  HCMIU
+                </a>
+                <span>|</span>
+                <a href="#">Student Email</a>
+
+                <span className="iu-utility-bar__spacer" />
+
+                {user && (
+                  <>
+                    <span className="iu-utility-bar__user">
+                      {user.full_name} ({user.username})
+                    </span>
+                    <button className="iu-utility-bar__logout" onClick={logout}>
+                      Đăng xuất
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <nav className="iu-nav">
+              <div className="iu-nav__inner">
+                {navItems.map((item) => (
+                  <Link key={item.path} to={item.path} className="iu-nav__link">
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            </nav>
+          </div>
         </div>
-      </nav>
+      </div>
 
       <main className="iu-main">
         <Outlet />
