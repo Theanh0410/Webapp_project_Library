@@ -1,10 +1,12 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLibrary } from '../context/LibraryContext'
 import type { Book, BorrowRecord} from '../types'
 import './Dashboard.css'
 
 export function StaffDashboard() {
+  const location = useLocation()
   const { user } = useAuth()
   const {
     books,
@@ -45,6 +47,21 @@ export function StaffDashboard() {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 4000)
   }
+
+  useEffect(() => {
+    const hash = location.hash.replace('#', '')
+
+    if (
+      hash === 'books' ||
+      hash === 'borrows' ||
+      hash === 'returns' ||
+      hash === 'overdue'
+    ) {
+      setActiveTab(hash)
+    } else {
+      setActiveTab('books')
+    }
+  }, [location.hash])
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -216,36 +233,10 @@ export function StaffDashboard() {
       )}
 
       <div className="staff-dashboard">
-        <div className="staff-tabs">
-          <button
-            className={`staff-tab ${activeTab === 'books' ? 'active' : ''}`}
-            onClick={() => setActiveTab('books')}
-          >
-            📚 Quản lý sách
-          </button>
-          <button
-            className={`staff-tab ${activeTab === 'borrows' ? 'active' : ''}`}
-            onClick={() => setActiveTab('borrows')}
-          >
-            ➕ Tạo hồ sơ mượn
-          </button>
-          <button
-            className={`staff-tab ${activeTab === 'returns' ? 'active' : ''}`}
-            onClick={() => setActiveTab('returns')}
-          >
-            ✓ Xác nhận trả sách
-          </button>
-          <button
-            className={`staff-tab ${activeTab === 'overdue' ? 'active' : ''}`}
-            onClick={() => setActiveTab('overdue')}
-          >
-            ⚠️ Sách quá hạn ({overdueRecords.length})
-          </button>
-        </div>
 
         {/* Books Management */}
         {activeTab === 'books' && (
-          <div className="staff-section">
+          <div id="books" className="staff-section">
             <h2>Quản lý sách</h2>
             <button
               className="btn-primary"
@@ -447,7 +438,7 @@ export function StaffDashboard() {
 
         {/* Create Borrow Record */}
         {activeTab === 'borrows' && (
-          <div className="staff-section">
+          <div id="borrows" className="staff-section">
             <h2>Tạo hồ sơ mượn sách</h2>
             <form className="borrow-form" onSubmit={handleCreateBorrowRecord}>
               <label>
@@ -487,7 +478,7 @@ export function StaffDashboard() {
 
         {/* Confirm Returns */}
         {activeTab === 'returns' && (
-          <div className="staff-section">
+          <div id="returns" className="staff-section">
             <h2>Xác nhận trả sách</h2>
             {pendingReturns.length === 0 ? (
               <p className="empty-state">Không có hồ sơ chờ xác nhận trả sách</p>
@@ -527,7 +518,7 @@ export function StaffDashboard() {
 
         {/* Overdue Books */}
         {activeTab === 'overdue' && (
-          <div className="staff-section">
+          <div id="overdue" className="staff-section">
             <h2>Sách quá hạn</h2>
             {overdueRecords.length === 0 ? (
               <p className="empty-state">Không có sách nào quá hạn</p>

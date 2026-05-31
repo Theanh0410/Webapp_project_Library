@@ -13,7 +13,7 @@ export function Login() {
   const [showRoleInfo, setShowRoleInfo] = useState(false)
 
   if (user) {
-    return <Navigate to={getRedirectPath(user.role)} replace />
+    return <Navigate to="/dashboard" replace />
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -27,7 +27,7 @@ export function Login() {
       return
     }
 
-    navigate(result.redirectTo || getRedirectPath(user.role))
+    navigate('/dashboard')
   }
 
   return (
@@ -100,10 +100,3 @@ export function Login() {
     </div>
   )
 }
-
-function getRedirectPath(role: string) {
-  if (role === 'manager') return '/manager-dashboard'
-  if (role === 'staff' || role === 'admin') return '/staff-dashboard'
-  return '/dashboard'
-}
-

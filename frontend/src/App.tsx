@@ -11,29 +11,35 @@ import { Register } from './pages/Register'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user } = useAuth()
-  if (!user) return <Navigate to="/login" replace />
+
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
+
   return <>{children}</>
 }
 
 export default function App() {
   return (
-    <LibraryProvider>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <LibraryProvider>
               <Layout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<DashboardRouter />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </LibraryProvider>
+            </LibraryProvider>
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<DashboardRouter />} />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
   )
 }
 
@@ -51,4 +57,3 @@ function DashboardRouter() {
       return <Dashboard />
   }
 }
-

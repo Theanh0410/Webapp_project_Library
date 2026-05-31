@@ -4,7 +4,7 @@ import { Logo } from './Logo'
 import './Layout.css'
 
 const STUDENT_LECTURER_NAV = [
-  { label: 'THƯ VIỆN', path: '/dashboard' },
+  { label: 'THƯ VIỆN', path: '/dashboard#books' },
   { label: 'MƯỢN / TRẢ', path: '/dashboard#borrow' },
   { label: 'ĐẶT TRƯỚC', path: '/dashboard#orders' },
   { label: 'LỊCH SỬ', path: '/dashboard#history' },

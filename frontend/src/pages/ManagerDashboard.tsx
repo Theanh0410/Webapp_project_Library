@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useLibrary } from '../context/LibraryContext'
 import './Dashboard.css'
@@ -27,6 +28,7 @@ interface StaffMember {
 export function ManagerDashboard() {
   const { user } = useAuth()
   const { users } = useLibrary()
+  const location = useLocation()
 
   const [activeTab, setActiveTab] = useState<'staff' | 'shifts'>('staff')
   const [toast, setToast] = useState<{ msg: string; type: 'info' | 'warn' } | null>(null)
@@ -54,14 +56,24 @@ export function ManagerDashboard() {
   }
 
   useEffect(() => {
-    loadStaff()
-  }, [])
+    const hash = location.hash.replace('#', '')
 
-  const [newStaff, setNewStaff] = useState({
-    full_name: '',
-    email: '',
-    username: '',
-  })
+    if (hash === 'staff' || hash === 'shifts') {
+      setActiveTab(hash)
+    } else {
+      setActiveTab('staff')
+    }
+  }, [location.hash])
+
+    useEffect(() => {
+      loadStaff()
+    }, [])
+
+    const [newStaff, setNewStaff] = useState({
+      full_name: '',
+      email: '',
+      username: '',
+    })
 
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null)
   const [selectedShifts, setSelectedShifts] = useState<string[]>([])
@@ -257,24 +269,9 @@ export function ManagerDashboard() {
           </div>
         </div>
 
-        <div className="manager-tabs">
-          <button
-            className={`manager-tab ${activeTab === 'staff' ? 'active' : ''}`}
-            onClick={() => setActiveTab('staff')}
-          >
-            👥 Quản lý nhân viên
-          </button>
-          <button
-            className={`manager-tab ${activeTab === 'shifts' ? 'active' : ''}`}
-            onClick={() => setActiveTab('shifts')}
-          >
-            📅 Phân công ca làm việc
-          </button>
-        </div>
-
         {/* Staff Management */}
         {activeTab === 'staff' && (
-          <div className="manager-section">
+          <div id="staff" className="manager-section">
             <h2>Quản lý nhân viên</h2>
             <button
               className="btn-primary"
@@ -373,7 +370,7 @@ export function ManagerDashboard() {
 
         {/* Shift Assignment */}
         {activeTab === 'shifts' && (
-          <div className="manager-section">
+          <div id="shifts" className="manager-section">
             <h2>Phân công ca làm việc</h2>
             <form className="shift-form" onSubmit={handleAssignShifts}>
               <label>
